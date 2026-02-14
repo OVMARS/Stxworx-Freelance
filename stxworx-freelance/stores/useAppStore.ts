@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Project, Gig, FreelancerProfile, WalletState, ChatContact } from '../types';
+import { Project, Gig, FreelancerProfile, WalletState, ChatContact, UserRole } from '../types';
 import {
   fetchProjects,
   fetchGigs,
@@ -14,6 +14,8 @@ import {
   generateId,
 } from '../services/StacksService';
 
+const ROLE_STORAGE_KEY = 'stxworx_user_role';
+
 interface AppState {
   projects: Project[];
   gigs: Gig[];
@@ -23,6 +25,8 @@ interface AppState {
   selectedProfile: FreelancerProfile | null;
   selectedGig: Gig | null;
   wallet: WalletState;
+  userRole: UserRole;
+  showRoleModal: boolean;
   searchTerm: string;
   selectedCategory: string;
   currentBlock: number;
@@ -47,6 +51,9 @@ interface AppState {
   setModalInitialData: (data: any) => void;
   setActiveChatContact: (contact: ChatContact | null) => void;
   setIsProcessing: (val: boolean) => void;
+  setUserRole: (role: UserRole) => void;
+  setShowRoleModal: (show: boolean) => void;
+  clearRole: () => void;
 
   handleCreateProject: (data: any) => Promise<void>;
   handleCreateGig: (data: any) => Promise<void>;
@@ -74,6 +81,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     balanceSTX: 0,
     balanceSBTC: 0,
   },
+  userRole: (localStorage.getItem(ROLE_STORAGE_KEY) as UserRole) || null,
+  showRoleModal: false,
   searchTerm: '',
   selectedCategory: 'All',
   currentBlock: 89212,
@@ -102,8 +111,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   syncWallet: (isSignedIn, userAddress) => {
     if (isSignedIn && userAddress) {
+      const savedRole = localStorage.getItem(ROLE_STORAGE_KEY) as UserRole;
       set((s) => ({
         wallet: { ...s.wallet, isConnected: true, address: userAddress },
+        userRole: savedRole || s.userRole,
+        showRoleModal: !savedRole && !s.userRole,
       }));
 
       fetchFreelancerByAddress(userAddress, 'You').then((profile) => {
@@ -119,6 +131,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         })
         .catch(() => {});
     } else {
+      localStorage.removeItem(ROLE_STORAGE_KEY);
       set({
         wallet: {
           isConnected: false,
@@ -129,6 +142,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           balanceSBTC: 0,
         },
         currentUserProfile: null,
+        userRole: null,
+        showRoleModal: false,
       });
     }
   },
@@ -179,6 +194,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   setModalInitialData: (data) => set({ modalInitialData: data }),
   setActiveChatContact: (contact) => set({ activeChatContact: contact }),
   setIsProcessing: (val) => set({ isProcessing: val }),
+
+  setUserRole: (role) => {
+    if (role) localStorage.setItem(ROLE_STORAGE_KEY, role);
+    else localStorage.removeItem(ROLE_STORAGE_KEY);
+    set({ userRole: role, showRoleModal: false });
+  },
+  setShowRoleModal: (show) => set({ showRoleModal: show }),
+  clearRole: () => {
+    localStorage.removeItem(ROLE_STORAGE_KEY);
+    set({ userRole: null });
+  },
 
   incrementBlock: () => set((s) => ({ currentBlock: s.currentBlock + 1 })),
 
