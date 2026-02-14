@@ -1,6 +1,6 @@
-# 🏆 LEADERBOARD & REWARDS FLOW
+# 🏆 LEADERBOARD & REWARDS FLOW (Simplified)
 
-The Leaderboard is the heartbeat of STXWorx, ranking freelancers based on verified performance and automating rewards through the reputation system.
+The Leaderboard ranks freelancers based exclusively on their track record of **successfully completed projects**.
 
 ---
 
@@ -8,41 +8,37 @@ The Leaderboard is the heartbeat of STXWorx, ranking freelancers based on verifi
 
 ```
 1. MILESTONE COMPLETED
-   ↓ Client releases payment: release-milestone-stx / sbtc
+   ↓ Client releases final milestone payment
    ↓ On-Chain Event: Contract emits "milestone-released"
    ↓
 2. BACKEND INDEXING
-   ↓ Backend listener detects the payment event
-   ↓ Updates Freelancer's "Total Earnings" in DB
-   ↓ Updates "Jobs Completed" count
-   ↓ records "Time to Complete" (Start Date → Release Date)
+   ↓ Backend listener detects the final payment event
+   ↓ Increments "Jobs Completed" count for the Freelancer
+   ↓ Status: Project moved to "Completed" in DB
 ```
 
 ---
 
-## **2. THE SCORING LOGIC (Performance Calculation)**
+## **2. THE RANKING LOGIC (Jobs Completed)**
 
-Your rank is calculated using a **Weighted Score**:
+The ranking is purely quantitative:
 
-*   **Verified Volume (50%)**: Total STX/sBTC earned and released.
-*   **Reliability (30%)**: Completion Rate (Total Projects vs. Disputed/Cancelled).
-*   **Efficiency (10%)**: Average speed of milestone delivery.
-*   **Quality (10%)**: Average ratings/reviews (if implemented).
+*   **Primary Metric**: Total number of projects where all milestones have been released.
+*   **Tie-Breaker (Optional)**: If two freelancers have the same number of completions, the one with the higher **Total Earnings** takes the lead.
 
 ---
 
 ## **3. THE LEADERBOARD CYCLE (Ranking)**
 
 ```
-1. DAILY REFRESH
-   ↓ Backend runs a "Ranking Batch Job" every 24 hours
-   ↓ Scores are recalculated for all active freelancers
-   ↓ Snapshot taken: "Top 100 Performers"
+1. REAL-TIME / DAILY REFRESH
+   ↓ Backend updates the "Jobs Completed" counter upon project finalization
+   ↓ Leaderboard automatically re-sorts based on the new count
    ↓
 2. LEADERBOARD UI
    ↓ Users view "Browse Gigs" → "Leaderboard"
-   ↓ Ranking icons displayed: 🏆 (Rank 1), 🥈 (Rank 2), 🥉 (Rank 3)
-   ↓ Filters: "This Month", "All Time", "By Specialty"
+   ↓ Ranking displayed: #1, #2, #3... based on completion count
+   ↓ Display column shows: "Completed Projects" instead of a complex score
 ```
 
 ---
@@ -51,43 +47,21 @@ Your rank is calculated using a **Weighted Score**:
 
 ### **A. Reputation Badges (On-Chain)**
 ```
-IF (Freelancer Profile Score > Threshold for Gold)
-   ↓ Notify Admin on Dashboard: "User X qualifies for Gold Badge"
-   ↓ Admin triggers NFT Flow: admin-upgrade-grade
-   ↓ User receives Gold Soulbound NFT
+IF (Total Completed Projects >= 10) → Qualify for Bronze
+IF (Total Completed Projects >= 25) → Qualify for Silver
+... and so on.
 ```
 
 ### **B. Platform Visibility**
 ```
-IF (Freelancer is in Top 10)
-   ↓ Profile boosted in Job Proposal Review queue
-   ↓ "Top Performer" badge displayed on job applications
-   ↓ Higher probability of being "Invited" to premium projects
-```
-
-### **C. Reward Distribution (Future)**
-*   **Fee Discounts**: Top performers pay 5% fee instead of 10%.
-*   **Revenue Share**: Top performers receive a small portion of platform fees in STX.
-*   **Priority Support**: Direct access to admin mediation.
-
----
-
-## **5. DISPUTE IMPACT (Penalty Flow)**
-
-```
-1. DISPUTE FILED
-   ↓ Project status: "Disputed"
-   ↓ Freelancer score receives a temporary "Freeze"
-   ↓
-2. DISPUTE RESOLVED
-   ↓ IF (Lost Dispute): Significant score penalty + potential "Reported" status
-   ↓ IF (Won Dispute): Score restored; no penalty
+Top 10 freelancers by completion count receive:
+   ↓ "Top Performer" badge on their profile
+   ↓ Higher visibility in the "Browse Gigs" search results
 ```
 
 ---
 
 ## **🛡️ Integrity Measures (Anti-Gaming)**
 
-1. **Volume Cap**: Multiple small projects from the same "Client" address have diminishing returns on score.
-2. **Wash Trading Check**: Abnormal funding cycles between linked wallets are flagged for Admin review.
-3. **Admin Audit**: Admin can manually ban or shadow-ban "fake" profiles from the leaderboard.
+1. **Unique Client Check**: Multiple completed projects from the same "Client" wallet are audited to prevent artificial count inflation.
+2. **Wash Trading Check**: Abnormal funding cycles between linked wallets result in disqualification from the leaderboard.
