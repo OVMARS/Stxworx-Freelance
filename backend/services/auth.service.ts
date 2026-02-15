@@ -1,73 +1,78 @@
-import { randomBytes, scrypt as _scrypt, timingSafeEqual } from "crypto";
-import { promisify } from "util";
-import type { User } from "@shared/schema";
-import jwt from "jsonwebtoken";
+import { verifyMessageSignatureRsv } from "@stacks/encryption";
+import { db } from "../db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import {
+  generateUserToken,
+  type UserTokenPayload,
+} from "../middleware/auth";
 
-const scrypt = promisify(_scrypt);
+export const authService = {
+  async verifyWalletAndLogin(data: {
+    stxAddress: string;
+    publicKey: string;
+    signature: string;
+    message: string;
+    role: "client" | "freelancer";
+  }) {
+    const { stxAddress, publicKey, signature, message, role } = data;
 
-// Default secret for development, but should be replaced in production
-const JWT_SECRET = process.env.JWT_SECRET || "super_secret_jwt_key_development_only";
-const COOKIE_NAME = "auth_token";
+    // Verify the Stacks signed message
+    const isValid = verifyMessageSignatureRsv({
+      message,
+      publicKey,
+      signature,
+    });
 
-export interface TokenPayload {
-    id: string;
-    role: string;
-}
-
-export class AuthService {
-    /**
-     * Hashes a password using scrypt with a random salt.
-     * Returns salt.hash string.
-     */
-    async hashPassword(password: string): Promise<string> {
-        const salt = randomBytes(16).toString("hex");
-        const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
-
-        // Store salt and hash, separated by a period
-        return `${salt}.${derivedKey.toString("hex")}`;
+    if (!isValid) {
+      throw new Error("Invalid wallet signature");
     }
 
-    /**
-     * Compares a plain text password with a stored hash (format: salt.hash).
-     */
-    async comparePassword(supplied: string, stored: string): Promise<boolean> {
-        const [salt, storedHash] = stored.split(".");
-        if (!salt || !storedHash) return false;
+    // Check if user exists
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.stxAddress, stxAddress));
 
-        const storedHashBuf = Buffer.from(storedHash, "hex");
-        const derivedKey = (await scrypt(supplied, salt, 64)) as Buffer;
+    let user;
 
-        return timingSafeEqual(storedHashBuf, derivedKey);
+    if (existingUser) {
+      // Existing user — ignore role field, use stored role
+      user = existingUser;
+    } else {
+      // New user — create with chosen role
+      const result = await db
+        .insert(users)
+        .values({
+          stxAddress,
+          role,
+        });
+      const [newUser] = await db.select().from(users).where(eq(users.id, result[0].insertId));
+      user = newUser;
     }
 
-    /**
-     * Generates a signed JWT token
-     */
-    generateToken(user: User): string {
-        const payload: TokenPayload = {
-            id: user.id,
-            role: user.role,
-        };
+    // Generate JWT
+    const tokenPayload: UserTokenPayload = {
+      id: user.id,
+      stxAddress: user.stxAddress,
+      role: user.role,
+    };
 
-        // Set expiry to 24h
-        return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
-    }
+    const token = generateUserToken(tokenPayload);
 
-    /**
-     * Verifies a token and returns the payload or null
-     */
-    verifyToken(token: string): TokenPayload | null {
-        try {
-            // @ts-ignore - JWT types issue
-            return jwt.verify(token, JWT_SECRET) as TokenPayload;
-        } catch (error) {
-            return null;
-        }
-    }
+    return { user, token };
+  },
 
-    getCookieName(): string {
-        return COOKIE_NAME;
-    }
-}
+  async getUserById(id: number) {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || null;
+  },
 
-export const authService = new AuthService();
+  async getUserByAddress(stxAddress: string) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.stxAddress, stxAddress));
+    return user || null;
+  },
+};

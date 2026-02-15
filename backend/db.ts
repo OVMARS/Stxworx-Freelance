@@ -1,6 +1,5 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pkg from "pg";
-const { Pool } = pkg;
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import * as schema from "@shared/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -9,8 +8,6 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+export const pool = mysql.createPool(process.env.DATABASE_URL);
 
-export const db = drizzle(pool, { schema });
+export const db = drizzle(pool, { schema, mode: "default" });
