@@ -17,7 +17,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'Web Development',
+    category: '',
     totalBudgetUSD: '', // Store USD input as string for controlled input
     tokenType: 'STX' as TokenType,
     freelancerAddress: '',
@@ -64,7 +64,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
       setFormData({
         title: initialData.title || '',
         description: initialData.description || '',
-        category: initialData.category || 'Web Development',
+        category: initialData.category || '',
         totalBudgetUSD: initialData.totalBudget ? String(initialData.totalBudget) : '', // Assuming initialData.totalBudget comes in as USD from the Gig Price
         tokenType: initialData.tokenType || 'STX',
         freelancerAddress: initialData.freelancerAddress || '',
@@ -82,7 +82,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
       setFormData({
         title: '',
         description: '',
-        category: 'Web Development',
+        category: '',
         totalBudgetUSD: '',
         tokenType: 'STX',
         freelancerAddress: '',
@@ -97,8 +97,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
     }
   }, [isOpen, initialData]);
 
-  // ... hooks ...
-
+  // Hooks for file attachment
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -226,17 +225,14 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Category</label>
-                  <select
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 focus:outline-none appearance-none"
+                  <input
+                    required
+                    type="text"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 focus:outline-none transition-colors placeholder-slate-700"
+                    placeholder="e.g. Smart Contracts, Design, Writing..."
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <option>Web Development</option>
-                    <option>Smart Contracts</option>
-                    <option>Design</option>
-                    <option>Auditing</option>
-                    <option>Writing</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
