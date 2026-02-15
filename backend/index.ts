@@ -1,16 +1,52 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { registerProjectRoutes } from "./project-routes";
+import { createServer } from "http";
 import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
+
+// Route imports
+import { authRoutes } from "./routes/auth.routes";
+import { userRoutes } from "./routes/user.routes";
+import { projectRoutes } from "./routes/project.routes";
+import { proposalRoutes } from "./routes/proposal.routes";
+import { milestoneRoutes } from "./routes/milestone.routes";
+import { disputeRoutes } from "./routes/dispute.routes";
+import { reviewRoutes } from "./routes/review.routes";
+import { categoryRoutes } from "./routes/category.routes";
+import { adminRoutes } from "./routes/admin.routes";
 
 const app = express();
+
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Set the environment - check NODE_ENV or default to development
-app.set('env', process.env.NODE_ENV || 'development');
+// CORS
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", CORS_ORIGIN);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
+// Global rate limiting
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api", globalLimiter);
+
+// Set environment
+app.set("env", process.env.NODE_ENV || "development");
+
+// Request logging
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -29,11 +65,9 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+        logLine = logLine.slice(0, 79) + "...";
       }
-
       console.log(logLine);
     }
   });
@@ -41,21 +75,28 @@ app.use((req, res, next) => {
   next();
 });
 
+// Mount routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/proposals", proposalRoutes);
+app.use("/api/milestones", milestoneRoutes);
+app.use("/api/disputes", disputeRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/admin", adminRoutes);
+
+// Error handler
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  res.status(status).json({ message });
+});
+
 (async () => {
-  const server = await registerRoutes(app);
-  registerProjectRoutes(app); // Register milestone-based project routes
+  const server = createServer(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup Vite in development for frontend serving
   if (app.get("env") === "development") {
     const { setupVite } = await import("./vite");
     await setupVite(app, server);
@@ -64,12 +105,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5001', 10);
-  server.listen(port, '0.0.0.0', () => {
+  const port = parseInt(process.env.PORT || "5001", 10);
+  server.listen(port, "0.0.0.0", () => {
     console.log(`serving on port ${port}`);
   });
 })();

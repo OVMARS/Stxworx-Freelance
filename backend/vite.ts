@@ -23,7 +23,7 @@ export function log(message: string, source = "express") {
 export async function setupVite(app: Express, server: Server) {
   // Dynamic imports - only load Vite in development mode
   const { createServer: createViteServer, createLogger } = await import("vite");
-  const viteConfig = (await import("../frontend/vite.config")).default;
+  const viteConfig = (await import("../stxworx-freelance/vite.config")).default;
   const viteLogger = createLogger();
 
   const serverOptions = {
@@ -34,6 +34,7 @@ export async function setupVite(app: Express, server: Server) {
 
   const vite = await createViteServer({
     ...viteConfig,
+    root: path.resolve(__dirname, "..", "stxworx-freelance"),
     configFile: false,
     customLogger: {
       ...viteLogger,
@@ -54,15 +55,15 @@ export async function setupVite(app: Express, server: Server) {
       const clientTemplate = path.resolve(
         __dirname,
         "..",
-        "frontend",
+        "stxworx-freelance",
         "index.html",
       );
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
+        `src="/index.tsx"`,
+        `src="/index.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
