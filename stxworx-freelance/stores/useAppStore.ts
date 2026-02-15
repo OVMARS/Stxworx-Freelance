@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Project, Gig, FreelancerProfile, WalletState, ChatContact, UserRole } from '../types';
+import { Project, Gig, FreelancerProfile, WalletState, ChatContact, UserRole, Application, ApplicationStatus } from '../types';
 import {
   fetchProjects,
   fetchGigs,
@@ -15,6 +15,7 @@ import {
 } from '../services/StacksService';
 
 const ROLE_STORAGE_KEY = 'stxworx_user_role';
+const APPLICATIONS_STORAGE_KEY = 'stxworx_applications';
 
 interface AppState {
   projects: Project[];
@@ -37,6 +38,8 @@ interface AppState {
   isGigModalOpen: boolean;
   modalInitialData: any;
   activeChatContact: ChatContact | null;
+  applications: Application[];
+  freelancerDashboardTab: 'applied' | 'active' | 'completed' | 'earnings' | 'nft';
 
   // Actions
   init: () => Promise<void>;
@@ -55,6 +58,9 @@ interface AppState {
   setShowRoleModal: (show: boolean) => void;
   clearRole: () => void;
 
+  applyToProject: (project: Project, coverLetter?: string) => void;
+  updateApplicationStatus: (applicationId: string, status: ApplicationStatus) => void;
+  setFreelancerDashboardTab: (tab: 'applied' | 'active' | 'completed' | 'earnings' | 'nft') => void;
   handleCreateProject: (data: any) => Promise<void>;
   handleCreateGig: (data: any) => Promise<void>;
   handleProjectAction: (projectId: string, actionType: string, payload?: any) => Promise<void>;
@@ -93,6 +99,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   isGigModalOpen: false,
   modalInitialData: null,
   activeChatContact: null,
+  applications: JSON.parse(localStorage.getItem(APPLICATIONS_STORAGE_KEY) || '[]'),
+  freelancerDashboardTab: 'applied',
 
   init: async () => {
     const [storedProjects, fetchedGigs, fetchedLeaderboard] = await Promise.all([
@@ -207,6 +215,37 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   incrementBlock: () => set((s) => ({ currentBlock: s.currentBlock + 1 })),
+
+  setFreelancerDashboardTab: (tab) => set({ freelancerDashboardTab: tab }),
+
+  applyToProject: (project, coverLetter) => {
+    const { wallet, applications } = get();
+    if (!wallet.address) return;
+    const alreadyApplied = applications.some(
+      (a) => a.projectId === project.id && a.freelancerAddress === wallet.address
+    );
+    if (alreadyApplied) return;
+    const newApp: Application = {
+      id: generateId(),
+      projectId: project.id,
+      freelancerAddress: wallet.address,
+      status: 'applied',
+      appliedAt: new Date().toISOString(),
+      coverLetter,
+      project,
+    };
+    const updated = [...applications, newApp];
+    localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(updated));
+    set({ applications: updated });
+  },
+
+  updateApplicationStatus: (applicationId, status) => {
+    const updated = get().applications.map((a) =>
+      a.id === applicationId ? { ...a, status } : a
+    );
+    localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(updated));
+    set({ applications: updated });
+  },
 
   handleCreateProject: async (data) => {
     const { wallet } = get();
