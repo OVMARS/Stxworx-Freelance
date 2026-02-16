@@ -24,7 +24,7 @@ const FreelancerPage: React.FC = () => {
   const {
     projects, wallet, currentUserProfile, leaderboardData,
     freelancerDashboardTab, setFreelancerDashboardTab, isProcessing,
-    handleProjectAction, setIsGigModalOpen, applications, updateApplicationStatus,
+    handleProjectAction, applications, updateApplicationStatus,
   } = useAppStore();
 
   const myApplications = useMemo(
@@ -181,12 +181,7 @@ const FreelancerPage: React.FC = () => {
           >
             <Briefcase className="w-4 h-4" /> Browse Projects
           </button>
-          <button
-            onClick={() => setIsGigModalOpen(true)}
-            className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-blue-900/20 flex items-center gap-2 transition-all hover:scale-105 text-sm"
-          >
-            <Briefcase className="w-4 h-4" /> Post New Gig
-          </button>
+
         </div>
       </div>
 

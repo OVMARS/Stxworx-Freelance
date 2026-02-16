@@ -13,8 +13,11 @@ import {
   connectX,
   generateId,
 } from '../services/StacksService';
+import { api } from '../lib/api';
+import { requestSignMessage, getUserAddress } from '../lib/stacks';
 
-const ROLE_STORAGE_KEY = 'stxworx_user_role';
+const ROLE_KEY_PREFIX = 'stxworx_role_';
+const roleKeyFor = (address: string) => `${ROLE_KEY_PREFIX}${address}`;
 const APPLICATIONS_STORAGE_KEY = 'stxworx_applications';
 
 interface AppState {
@@ -43,7 +46,7 @@ interface AppState {
 
   // Actions
   init: () => Promise<void>;
-  syncWallet: (isSignedIn: boolean, userAddress: string | null) => void;
+  syncWallet: (isSignedIn: boolean, userAddress: string | null) => Promise<void>;
   setSearchTerm: (term: string) => void;
   setSelectedCategory: (cat: string) => void;
   setFreelancerTab: (tab: 'active' | 'leaderboard') => void;
@@ -54,7 +57,7 @@ interface AppState {
   setModalInitialData: (data: any) => void;
   setActiveChatContact: (contact: ChatContact | null) => void;
   setIsProcessing: (val: boolean) => void;
-  setUserRole: (role: UserRole) => void;
+  setUserRole: (role: UserRole) => Promise<void>;
   setShowRoleModal: (show: boolean) => void;
   clearRole: () => void;
 
@@ -87,7 +90,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     balanceSTX: 0,
     balanceSBTC: 0,
   },
-  userRole: (localStorage.getItem(ROLE_STORAGE_KEY) as UserRole) || null,
+  userRole: null,
   showRoleModal: false,
   searchTerm: '',
   selectedCategory: 'All',
@@ -117,14 +120,33 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  syncWallet: (isSignedIn, userAddress) => {
+  syncWallet: async (isSignedIn, userAddress) => {
     if (isSignedIn && userAddress) {
-      const savedRole = localStorage.getItem(ROLE_STORAGE_KEY) as UserRole;
       set((s) => ({
         wallet: { ...s.wallet, isConnected: true, address: userAddress },
-        userRole: savedRole || s.userRole,
-        showRoleModal: !savedRole && !s.userRole,
       }));
+
+      // 1. Try existing backend session (httpOnly cookie)
+      try {
+        const { user } = await api.auth.me();
+        if (user.stxAddress === userAddress) {
+          // Valid session — use role from backend
+          localStorage.setItem(roleKeyFor(userAddress), user.role);
+          set({ userRole: user.role as UserRole, showRoleModal: false });
+        } else {
+          // Cookie is for a different address — ignore it
+          throw new Error('address mismatch');
+        }
+      } catch {
+        // 2. No valid session — fall back to localStorage cache
+        const savedRole = localStorage.getItem(roleKeyFor(userAddress)) as UserRole;
+        if (savedRole) {
+          set({ userRole: savedRole, showRoleModal: false });
+        } else {
+          // 3. Completely new — show role picker
+          set({ userRole: null, showRoleModal: true });
+        }
+      }
 
       fetchFreelancerByAddress(userAddress, 'You').then((profile) => {
         set({ currentUserProfile: profile });
@@ -139,7 +161,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         })
         .catch(() => {});
     } else {
-      localStorage.removeItem(ROLE_STORAGE_KEY);
       set({
         wallet: {
           isConnected: false,
@@ -150,7 +171,6 @@ export const useAppStore = create<AppState>((set, get) => ({
           balanceSBTC: 0,
         },
         currentUserProfile: null,
-        userRole: null,
         showRoleModal: false,
       });
     }
@@ -203,14 +223,46 @@ export const useAppStore = create<AppState>((set, get) => ({
   setActiveChatContact: (contact) => set({ activeChatContact: contact }),
   setIsProcessing: (val) => set({ isProcessing: val }),
 
-  setUserRole: (role) => {
-    if (role) localStorage.setItem(ROLE_STORAGE_KEY, role);
-    else localStorage.removeItem(ROLE_STORAGE_KEY);
-    set({ userRole: role, showRoleModal: false });
+  setUserRole: async (role) => {
+    const addr = get().wallet.address;
+    if (!role || !addr) {
+      if (addr) localStorage.removeItem(roleKeyFor(addr));
+      set({ userRole: null, showRoleModal: false });
+      return;
+    }
+
+    // Sign a message with the wallet to prove ownership
+    const message = `STXWorx authentication: ${addr} at ${Date.now()}`;
+    const signed = await requestSignMessage(message);
+    if (!signed) {
+      // User cancelled signing — keep modal open
+      return;
+    }
+
+    // Call backend — creates user if new, returns stored role if existing
+    try {
+      const { user } = await api.auth.verifyWallet({
+        stxAddress: addr,
+        publicKey: signed.publicKey,
+        signature: signed.signature,
+        message,
+        role: role as 'client' | 'freelancer',
+      });
+      // Use the role from the backend response (may differ from `role` for existing users)
+      const backendRole = user.role as UserRole;
+      localStorage.setItem(roleKeyFor(addr), backendRole!);
+      set({ userRole: backendRole, showRoleModal: false });
+    } catch (err) {
+      console.error('Backend auth failed:', err);
+      // Fallback: use client-side role so the UI doesn't get stuck
+      localStorage.setItem(roleKeyFor(addr), role);
+      set({ userRole: role, showRoleModal: false });
+    }
   },
   setShowRoleModal: (show) => set({ showRoleModal: show }),
   clearRole: () => {
-    localStorage.removeItem(ROLE_STORAGE_KEY);
+    const addr = get().wallet.address;
+    if (addr) localStorage.removeItem(roleKeyFor(addr));
     set({ userRole: null });
   },
 

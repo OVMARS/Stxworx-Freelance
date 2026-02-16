@@ -1,4 +1,4 @@
-import { AppConfig, UserSession, authenticate as showConnectFn } from '@stacks/connect';
+import { AppConfig, UserSession, authenticate as showConnectFn, request as stacksRequest } from '@stacks/connect';
 import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
 import { APP_CONFIG, IS_TESTNET } from './constants';
 
@@ -40,4 +40,17 @@ export function getUserAddress() {
 export function signout() {
     userSession.signUserOut();
     window.location.reload();
+}
+
+/**
+ * Prompt the wallet to sign a plain-text message.
+ * Returns { signature, publicKey } on success, null if cancelled.
+ */
+export async function requestSignMessage(message: string): Promise<{ signature: string; publicKey: string } | null> {
+    try {
+        const result = await stacksRequest('stx_signMessage', { message });
+        return { signature: result.signature, publicKey: result.publicKey };
+    } catch {
+        return null;
+    }
 }

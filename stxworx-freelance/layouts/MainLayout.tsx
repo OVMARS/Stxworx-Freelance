@@ -54,7 +54,6 @@ const MainLayout: React.FC = () => {
   };
 
   const handleDisconnect = () => {
-    localStorage.removeItem('stxworx_user_role');
     disconnect();
     navigate('/');
   };
@@ -96,9 +95,11 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const handleRoleSelect = (role: 'client' | 'freelancer') => {
-    setUserRole(role);
-    navigate(role === 'client' ? '/client' : '/freelancer');
+  const handleRoleSelect = async (role: 'client' | 'freelancer') => {
+    await setUserRole(role);
+    // After backend auth, use the actual role from the store (may differ for existing users)
+    const actualRole = useAppStore.getState().userRole;
+    navigate(actualRole === 'client' ? '/client' : '/freelancer');
   };
 
   const isAdminRoute = location.pathname.startsWith('/admin');
