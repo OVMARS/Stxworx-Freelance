@@ -95,6 +95,7 @@ export interface Project {
   milestones: Milestone[];
   attachments?: string[];
   status?: 'open' | 'active' | 'completed' | 'disputed' | 'cancelled' | 'refunded';
+  onChainId?: number | null;
 }
 
 export interface FreelancerProfile {

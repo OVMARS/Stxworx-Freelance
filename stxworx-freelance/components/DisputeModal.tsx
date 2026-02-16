@@ -6,15 +6,17 @@ interface DisputeModalProps {
   projectId: number;
   projectTitle: string;
   milestoneCount: number;
+  onChainId?: number | null;
   onClose: () => void;
 }
 
-const DisputeModal: React.FC<DisputeModalProps> = ({ projectId, projectTitle, milestoneCount, onClose }) => {
+const DisputeModal: React.FC<DisputeModalProps> = ({ projectId, projectTitle, milestoneCount, onChainId, onClose }) => {
   const { createDispute, isProcessing } = useAppStore();
   const [milestoneNum, setMilestoneNum] = useState(1);
   const [reason, setReason] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [error, setError] = useState('');
+  const [txPending, setTxPending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,16 +25,37 @@ const DisputeModal: React.FC<DisputeModalProps> = ({ projectId, projectTitle, mi
       setError('Please provide a reason for the dispute.');
       return;
     }
+    setTxPending(true);
     try {
-      await createDispute({
-        projectId,
+      const { fileDisputeContractCall } = await import('../lib/contracts');
+      await fileDisputeContractCall(
+        onChainId || 1,
         milestoneNum,
-        reason: reason.trim(),
-        evidenceUrl: evidenceUrl.trim() || undefined,
-      });
-      onClose();
+        async (txData) => {
+          console.log('file-dispute TX sent:', txData.txId);
+          try {
+            await createDispute({
+              projectId,
+              milestoneNum,
+              reason: reason.trim(),
+              evidenceUrl: evidenceUrl.trim() || undefined,
+              disputeTxId: txData.txId,
+            });
+            onClose();
+          } catch (err: any) {
+            setError(err?.message || 'Failed to save dispute to backend.');
+          } finally {
+            setTxPending(false);
+          }
+        },
+        () => {
+          console.log('file-dispute TX cancelled');
+          setTxPending(false);
+        }
+      );
     } catch (err: any) {
-      setError(err?.message || 'Failed to file dispute. Please try again.');
+      setError(err?.message || 'Failed to file on-chain dispute.');
+      setTxPending(false);
     }
   };
 
@@ -119,10 +142,10 @@ const DisputeModal: React.FC<DisputeModalProps> = ({ projectId, projectTitle, mi
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={isProcessing || !reason.trim()}
+              disabled={isProcessing || txPending || !reason.trim()}
               className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-wider text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isProcessing ? 'Filing...' : <><AlertTriangle className="w-4 h-4" /> File Dispute</>}
+              {txPending ? 'Signing TX...' : isProcessing ? 'Filing...' : <><AlertTriangle className="w-4 h-4" /> File Dispute</>}
             </button>
             <button
               type="button"

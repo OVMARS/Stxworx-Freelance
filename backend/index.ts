@@ -37,7 +37,7 @@ app.use((req, res, next) => {
 // Global rate limiting
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: process.env.NODE_ENV === 'development' ? 1000 : 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
