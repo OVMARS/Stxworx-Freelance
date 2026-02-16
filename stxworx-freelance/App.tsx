@@ -10,6 +10,7 @@ import EditProfilePage from './pages/EditProfilePage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
+import BrowseProjectDetailPage from './pages/BrowseProjectDetailPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 
 const AnimationStyles = () => (
@@ -75,6 +76,7 @@ const App: React.FC = () => (
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/browse" element={<BrowsePage />} />
+          <Route path="/project/:id" element={<BrowseProjectDetailPage />} />
           <Route path="/client" element={<ClientPage />} />
           <Route path="/client/project/:id" element={<ProjectDetailPage />} />
           <Route path="/freelancer" element={<FreelancerPage />} />

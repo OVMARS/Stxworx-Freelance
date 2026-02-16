@@ -92,7 +92,8 @@ const BrowsePage: React.FC = () => {
             return (
               <div
                 key={project.id}
-                className="bg-[#0b0f19] rounded-xl border border-slate-800 hover:border-orange-500/50 transition-all duration-300 p-6 group relative overflow-hidden"
+                onClick={() => navigate(`/project/${project.id}`)}
+                className="bg-[#0b0f19] rounded-xl border border-slate-800 hover:border-orange-500/50 transition-all duration-300 p-6 group relative overflow-hidden cursor-pointer"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/5 rounded-full blur-[50px] -mr-16 -mt-16 group-hover:bg-orange-600/10 transition-all" />
                 <div className="relative z-10">
@@ -138,7 +139,7 @@ const BrowsePage: React.FC = () => {
 
                   {userRole === 'freelancer' && wallet.isConnected && (
                     <button
-                      onClick={() => handleApplyClick(project)}
+                      onClick={(e) => { e.stopPropagation(); handleApplyClick(project); }}
                       disabled={applied}
                       className={`w-full py-3 rounded-xl text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
                         applied

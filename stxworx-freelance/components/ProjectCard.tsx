@@ -19,6 +19,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
   const [expanded, setExpanded] = React.useState(true);
   const [showDisputeModal, setShowDisputeModal] = React.useState(false);
   const [showReviewModal, setShowReviewModal] = React.useState(false);
+  const [refundPending, setRefundPending] = React.useState(false);
   const { milestoneSubmissions, fetchMilestoneSubmissions, projectDisputes, fetchProjectDisputes } = useAppStore();
 
   // Fetch milestone submissions for active projects
@@ -55,6 +56,31 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
   const progress = (completedMilestones / 4) * 100;
 
   const usdValue = tokenToUsd(project.totalBudget, project.tokenType);
+
+  const handleRequestRefund = async () => {
+    setRefundPending(true);
+    try {
+      const { requestRefundContractCall } = await import('../lib/contracts');
+      const onChainProjectId = project.onChainId || 1;
+      await requestRefundContractCall(
+        onChainProjectId,
+        project.tokenType as 'STX' | 'sBTC',
+        async (txData) => {
+          console.log('request-refund TX sent:', txData.txId);
+          // Update backend status
+          onAction(project.id, 'cancel');
+          setRefundPending(false);
+        },
+        () => {
+          console.log('request-refund TX cancelled');
+          setRefundPending(false);
+        }
+      );
+    } catch (err: any) {
+      console.error('request-refund failed:', err);
+      setRefundPending(false);
+    }
+  };
 
   return (
     <div className="bg-[#0b0f19] rounded-xl shadow-lg border border-slate-800 overflow-hidden hover:border-orange-500/50 transition-all duration-300 relative group">
@@ -172,6 +198,17 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
               <Star className="w-3 h-3" /> Leave Review
             </button>
           )}
+
+          {/* Refund button — client only, active funded projects */}
+          {role === 'client' && isActive && project.isFunded && (
+            <button
+              onClick={handleRequestRefund}
+              disabled={refundPending || isProcessing}
+              className="px-4 py-2 bg-yellow-950/40 text-yellow-400 text-xs font-bold uppercase tracking-wider rounded hover:bg-yellow-600 hover:text-white border border-yellow-900/30 transition-all flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {refundPending ? 'Signing TX...' : <><AlertCircle className="w-3 h-3" /> Request Refund</>}
+            </button>
+          )}
         </div>
 
         {expanded && (
@@ -201,6 +238,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
           projectId={Number(project.id)}
           projectTitle={project.title}
           milestoneCount={project.milestones.length}
+          onChainId={project.onChainId}
           onClose={() => setShowDisputeModal(false)}
         />
       )}
@@ -230,15 +268,71 @@ const MilestoneItem: React.FC<{
   submissions: BackendMilestoneSubmission[];
 }> = ({ index, milestone, project, role, onAction, isProcessing, submissions }) => {
   const [submissionLink, setSubmissionLink] = React.useState('');
+  const [txPending, setTxPending] = React.useState(false);
 
   // Get the latest submission for this milestone
   const latestSubmission = submissions.length > 0
     ? submissions.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0]
     : null;
 
-  const handleFreelancerSubmit = () => {
+  const milestoneNum = milestone.id; // 1-based, matches contract
+  const onChainProjectId = project.onChainId || 1; // fallback to 1 until properly tracked
+
+  const handleFreelancerSubmit = async () => {
     if (!submissionLink) return;
-    onAction(project.id, 'submit_milestone', { milestoneId: milestone.id, link: submissionLink });
+    setTxPending(true);
+    try {
+      const { completeMilestoneContractCall } = await import('../lib/contracts');
+      await completeMilestoneContractCall(
+        onChainProjectId,
+        milestoneNum,
+        (txData) => {
+          console.log('complete-milestone TX sent:', txData.txId);
+          onAction(project.id, 'submit_milestone', {
+            milestoneId: milestone.id,
+            link: submissionLink,
+            completionTxId: txData.txId,
+          });
+          setTxPending(false);
+        },
+        () => {
+          console.log('complete-milestone TX cancelled');
+          setTxPending(false);
+        }
+      );
+    } catch (err: any) {
+      console.error('complete-milestone failed:', err);
+      setTxPending(false);
+    }
+  };
+
+  const handleClientApprove = async () => {
+    if (!latestSubmission) return;
+    setTxPending(true);
+    try {
+      const { releaseMilestoneContractCall } = await import('../lib/contracts');
+      await releaseMilestoneContractCall(
+        onChainProjectId,
+        milestoneNum,
+        project.tokenType as 'STX' | 'sBTC',
+        (txData) => {
+          console.log('release-milestone TX sent:', txData.txId);
+          onAction(project.id, 'approve_milestone', {
+            submissionId: latestSubmission.id,
+            milestoneId: milestone.id,
+            releaseTxId: txData.txId,
+          });
+          setTxPending(false);
+        },
+        () => {
+          console.log('release-milestone TX cancelled');
+          setTxPending(false);
+        }
+      );
+    } catch (err: any) {
+      console.error('release-milestone failed:', err);
+      setTxPending(false);
+    }
   };
 
   const getStatusColor = () => {
@@ -300,10 +394,10 @@ const MilestoneItem: React.FC<{
               />
               <button
                 onClick={handleFreelancerSubmit}
-                disabled={!submissionLink || isProcessing}
+                disabled={!submissionLink || isProcessing || txPending}
                 className="px-3 py-2 bg-blue-600 text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-blue-500 disabled:opacity-50"
               >
-                Submit Work
+                {txPending ? 'Signing TX...' : 'Submit Work'}
               </button>
             </div>
           )}
@@ -323,11 +417,11 @@ const MilestoneItem: React.FC<{
               )}
               <div className="flex gap-2">
                 <button
-                  onClick={() => onAction(project.id, 'approve_milestone', { submissionId: latestSubmission.id, milestoneId: milestone.id, releaseTxId: 'pending' })}
-                  disabled={isProcessing}
+                  onClick={handleClientApprove}
+                  disabled={isProcessing || txPending}
                   className="flex-1 px-3 py-2 bg-green-600 text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-green-500 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? 'Verifying...' : 'Approve & Release'}
+                  {txPending ? 'Signing TX...' : isProcessing ? 'Verifying...' : 'Approve & Release'}
                 </button>
                 <button
                   onClick={() => onAction(project.id, 'reject_milestone', { submissionId: latestSubmission.id, milestoneId: milestone.id })}
