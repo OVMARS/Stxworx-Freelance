@@ -37,44 +37,6 @@ export function getUserAddress() {
     return userData?.profile?.stxAddress?.testnet || userData?.profile?.stxAddress?.mainnet;
 }
 
-export function getPublicKey(): string | null {
-    const userData = getUserData();
-    if (!userData) return null;
-    const appPrivKey = userData.appPrivateKey;
-    if (!appPrivKey) return null;
-    try {
-        const { getPublicKey: getPub } = require('@stacks/transactions');
-        return getPub(appPrivKey);
-    } catch {
-        return userData.profile?.stxAddress?.testnet || null;
-    }
-}
-
-export interface SignMessageResult {
-    signature: string;
-    publicKey: string;
-}
-
-export function requestSignMessage(message: string): Promise<SignMessageResult> {
-    return new Promise((resolve, reject) => {
-        openSignatureRequestPopup({
-            message,
-            appDetails: {
-                name: APP_CONFIG.name,
-                icon: window.location.origin + APP_CONFIG.icon,
-            },
-            network: IS_TESTNET ? 'testnet' : 'mainnet',
-            userSession,
-            onFinish: (data) => {
-                resolve({ signature: data.signature, publicKey: data.publicKey });
-            },
-            onCancel: () => {
-                reject(new Error('User cancelled signature request'));
-            },
-        });
-    });
-}
-
 export function signout() {
     userSession.signUserOut();
     window.location.reload();
