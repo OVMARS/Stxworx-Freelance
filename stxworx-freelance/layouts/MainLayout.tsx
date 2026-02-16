@@ -17,10 +17,11 @@ const MainLayout: React.FC = () => {
   const {
     wallet, searchTerm, isModalOpen, isGigModalOpen,
     modalInitialData, activeChatContact, isProcessing,
-    userRole, showRoleModal,
+    userRole, showRoleModal, isAuthChecking,
     init, syncWallet, setSearchTerm, setIsModalOpen,
     setIsGigModalOpen, setActiveChatContact, setIsProcessing,
-    setUserRole, handleCreateProject, handleCreateGig, incrementBlock,
+    setUserRole, verifyAndLogin, logoutUser,
+    handleCreateProject, handleCreateGig, incrementBlock,
   } = useAppStore();
 
   useEffect(() => {
@@ -110,6 +111,21 @@ const MainLayout: React.FC = () => {
         return;
       }
       console.error('Role selection failed:', err);
+      setIsProcessing(true);
+      const user = await verifyAndLogin(role);
+      const actualRole = user.role;
+      navigate(actualRole === 'client' ? '/client' : '/freelancer');
+    } catch (e: any) {
+      console.error('Auth failed:', e.message);
+      if (e.message === 'User cancelled signature request') {
+        // User closed the Hiro sign popup — keep modal open
+        return;
+      }
+      // For other errors (server down, etc.) fall back to local role
+      setUserRole(role);
+      navigate(role === 'client' ? '/client' : '/freelancer');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -153,7 +169,7 @@ const MainLayout: React.FC = () => {
         onCloseExternal={() => setActiveChatContact(null)}
       />
 
-      <RoleSelectModal open={showRoleModal} onSelect={handleRoleSelect} onClose={handleDisconnect} />
+      <RoleSelectModal open={showRoleModal} onSelect={handleRoleSelect} onClose={handleDisconnect} isProcessing={isProcessing} />
     </div>
   );
 };
