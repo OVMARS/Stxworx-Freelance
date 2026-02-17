@@ -34,12 +34,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Global rate limiting
+// Global rate limiting (skipped in development)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: 500,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== "production",
 });
 app.use("/api", globalLimiter);
 

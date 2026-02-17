@@ -7,10 +7,11 @@ export const authRoutes = Router();
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: 50,
   message: { message: "Too many auth attempts, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== "production",
 });
 
 // Public
