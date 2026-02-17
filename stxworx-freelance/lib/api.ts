@@ -147,6 +147,17 @@ export interface BackendNFT {
   createdAt: string;
 }
 
+export interface BackendNotification {
+  id: number;
+  userId: number;
+  type: 'milestone_submitted' | 'milestone_approved' | 'milestone_rejected' | 'dispute_filed' | 'dispute_resolved' | 'proposal_received' | 'proposal_accepted' | 'project_completed';
+  title: string;
+  message: string;
+  projectId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface AdminDashboardStats {
   totalUsers: number;
   totalProjects: number;
@@ -407,6 +418,19 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+  },
+
+  /* ── Notifications ── */
+  notifications: {
+    list: () => request<BackendNotification[]>('/notifications'),
+
+    unreadCount: () => request<{ count: number }>('/notifications/unread-count'),
+
+    markRead: (id: number) =>
+      request<{ message: string }>(`/notifications/${id}/read`, { method: 'PATCH' }),
+
+    markAllRead: () =>
+      request<{ message: string }>('/notifications/read-all', { method: 'PATCH' }),
   },
 
   /* ── Admin ── */

@@ -15,6 +15,7 @@ import {
   type BackendReview,
   type BackendNFT,
   type BackendProposal,
+  type BackendNotification,
   type Category,
   type AuthUser,
   type AdminAuthUser,
@@ -59,6 +60,10 @@ interface AppState {
   freelancerDashboardTab: 'applied' | 'active' | 'work' | 'completed' | 'earnings' | 'nft';
   authUser: AuthUser | null;
   isAuthChecking: boolean;
+
+  // Notification state
+  notifications: BackendNotification[];
+  unreadNotificationCount: number;
 
   // Admin state
   adminUser: AdminAuthUser | null;
@@ -114,6 +119,12 @@ interface AppState {
   handleSaveProfile: (updatedProfile: FreelancerProfile) => Promise<void>;
   viewProfileByAddress: (address: string, name?: string) => Promise<FreelancerProfile>;
   incrementBlock: () => void;
+
+  // Notification actions
+  fetchNotifications: () => Promise<void>;
+  fetchUnreadCount: () => Promise<void>;
+  markNotificationRead: (id: number) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 
   // Admin actions
   adminLogin: (username: string, password: string) => Promise<void>;
@@ -178,6 +189,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   adminProjects: [],
   adminDisputes: [],
   adminNFTs: [],
+
+  // Notification defaults
+  notifications: [],
+  unreadNotificationCount: 0,
 
   fetchCategories: async () => {
     try {
@@ -403,6 +418,10 @@ export const useAppStore = create<AppState>((set, get) => ({
           set((s) => ({ wallet: { ...s.wallet, balanceSTX: stx } }));
         })
         .catch(() => {});
+
+      // Fetch notifications for connected user
+      get().fetchNotifications();
+      get().fetchUnreadCount();
     } else {
       set({
         wallet: {
@@ -415,6 +434,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
         currentUserProfile: null,
         showRoleModal: false,
+        notifications: [],
+        unreadNotificationCount: 0,
       });
     }
   },
@@ -769,6 +790,51 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
       set({ selectedProfile: fallback });
       return fallback;
+    }
+  },
+
+  // ─── Notification Actions ─────────────────────────────────
+
+  fetchNotifications: async () => {
+    try {
+      const notifs = await api.notifications.list();
+      set({ notifications: notifs });
+    } catch (e) {
+      // User not authenticated — silently ignore
+    }
+  },
+
+  fetchUnreadCount: async () => {
+    try {
+      const { count } = await api.notifications.unreadCount();
+      set({ unreadNotificationCount: count });
+    } catch (e) {
+      // silently ignore
+    }
+  },
+
+  markNotificationRead: async (id: number) => {
+    // Optimistic update
+    set((s) => ({
+      notifications: s.notifications.map((n) => n.id === id ? { ...n, isRead: true } : n),
+      unreadNotificationCount: Math.max(0, s.unreadNotificationCount - 1),
+    }));
+    try {
+      await api.notifications.markRead(id);
+    } catch (e) {
+      console.error('Failed to mark notification read:', e);
+    }
+  },
+
+  markAllNotificationsRead: async () => {
+    set((s) => ({
+      notifications: s.notifications.map((n) => ({ ...n, isRead: true })),
+      unreadNotificationCount: 0,
+    }));
+    try {
+      await api.notifications.markAllRead();
+    } catch (e) {
+      console.error('Failed to mark all read:', e);
     }
   },
 

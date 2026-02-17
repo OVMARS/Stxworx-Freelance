@@ -175,6 +175,30 @@ export const categories = mysqlTable("categories", {
   subcategories: json("subcategories").$type<string[]>().notNull(),
 });
 
+export const NOTIFICATION_TYPES = [
+  "milestone_submitted",
+  "milestone_approved",
+  "milestone_rejected",
+  "dispute_filed",
+  "dispute_resolved",
+  "proposal_received",
+  "proposal_accepted",
+  "project_completed",
+] as const;
+
+export const notifications = mysqlTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: bigint("user_id", { mode: "number", unsigned: true })
+    .references(() => users.id)
+    .notNull(),
+  type: mysqlEnum("type", [...NOTIFICATION_TYPES]).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  projectId: bigint("project_id", { mode: "number", unsigned: true }).references(() => projects.id),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const reputationNfts = mysqlTable("reputation_nfts", {
   id: serial("id").primaryKey(),
   recipientId: bigint("recipient_id", { mode: "number", unsigned: true })
@@ -276,6 +300,14 @@ export const insertReputationNftSchema = createInsertSchema(reputationNfts, {
 
 export const selectReputationNftSchema = createSelectSchema(reputationNfts);
 
+export const insertNotificationSchema = createInsertSchema(notifications, {
+  type: z.enum([...NOTIFICATION_TYPES]),
+  title: z.string().min(1).max(200),
+  message: z.string().min(1),
+}).omit({ id: true, createdAt: true, isRead: true });
+
+export const selectNotificationSchema = createSelectSchema(notifications);
+
 // TypeScript Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -295,3 +327,5 @@ export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type ReputationNft = typeof reputationNfts.$inferSelect;
 export type InsertReputationNft = z.infer<typeof insertReputationNftSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;

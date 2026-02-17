@@ -4,11 +4,12 @@ import { db } from "../db";
 import { milestoneSubmissions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { projectService } from "../services/project.service";
+import { notificationService } from "../services/notification.service";
 
 const submitSchema = z.object({
   projectId: z.number().int(),
   milestoneNum: z.number().int().min(1).max(4),
-  deliverableUrl: z.string().url().max(500),
+  deliverableUrl: z.string().min(1).max(500),
   description: z.string().optional(),
   completionTxId: z.string().max(100).optional(),
 });
@@ -49,6 +50,19 @@ export const milestoneController = {
           completionTxId,
         });
       const [submission] = await db.select().from(milestoneSubmissions).where(eq(milestoneSubmissions.id, insertResult[0].insertId));
+
+      // Notify the client that a milestone was submitted
+      try {
+        await notificationService.create({
+          userId: project.clientId,
+          type: "milestone_submitted",
+          title: `Milestone ${milestoneNum} Submitted`,
+          message: `Your freelancer has submitted deliverables for Milestone ${milestoneNum} on "${project.title}". Please review and approve or reject.`,
+          projectId: project.id,
+        });
+      } catch (e) {
+        console.error("Failed to create submission notification:", e);
+      }
 
       return res.status(201).json(submission);
     } catch (error) {
@@ -102,6 +116,34 @@ export const milestoneController = {
         await projectService.update(project.id, { status: "completed" });
       }
 
+      // Notify the freelancer that their milestone was approved
+      try {
+        if (submission.freelancerId) {
+          const isProjectComplete = approvedCount >= project.numMilestones;
+          await notificationService.create({
+            userId: submission.freelancerId,
+            type: "milestone_approved",
+            title: `Milestone ${submission.milestoneNum} Approved`,
+            message: isProjectComplete
+              ? `Milestone ${submission.milestoneNum} on "${project.title}" has been approved and funds released! All milestones complete — project marked as finished.`
+              : `Milestone ${submission.milestoneNum} on "${project.title}" has been approved and funds released to your wallet.`,
+            projectId: project.id,
+          });
+
+          if (isProjectComplete) {
+            await notificationService.create({
+              userId: project.clientId,
+              type: "project_completed",
+              title: "Project Completed",
+              message: `All milestones on "${project.title}" have been approved. The project is now complete!`,
+              projectId: project.id,
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to create approval notification:", e);
+      }
+
       return res.status(200).json(updated);
     } catch (error) {
       console.error("Approve milestone error:", error);
@@ -132,6 +174,21 @@ export const milestoneController = {
         .set({ status: "rejected", reviewedAt: new Date() })
         .where(eq(milestoneSubmissions.id, id));
       const [updated] = await db.select().from(milestoneSubmissions).where(eq(milestoneSubmissions.id, id));
+
+      // Notify the freelancer that their milestone was rejected
+      try {
+        if (submission.freelancerId) {
+          await notificationService.create({
+            userId: submission.freelancerId,
+            type: "milestone_rejected",
+            title: `Milestone ${submission.milestoneNum} Rejected`,
+            message: `Your submission for Milestone ${submission.milestoneNum} on "${project.title}" was rejected. Please review feedback and resubmit.`,
+            projectId: project.id,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to create rejection notification:", e);
+      }
 
       return res.status(200).json(updated);
     } catch (error) {

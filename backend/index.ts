@@ -13,6 +13,7 @@ import { disputeRoutes } from "./routes/dispute.routes";
 import { reviewRoutes } from "./routes/review.routes";
 import { categoryRoutes } from "./routes/category.routes";
 import { adminRoutes } from "./routes/admin.routes";
+import { notificationRoutes } from "./routes/notification.routes";
 
 const app = express();
 
@@ -85,6 +86,7 @@ app.use("/api/disputes", disputeRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
