@@ -20,6 +20,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
   const [showDisputeModal, setShowDisputeModal] = React.useState(false);
   const [showReviewModal, setShowReviewModal] = React.useState(false);
   const [refundPending, setRefundPending] = React.useState(false);
+  const [emergencyRefundPending, setEmergencyRefundPending] = React.useState(false);
   const { milestoneSubmissions, fetchMilestoneSubmissions, projectDisputes, fetchProjectDisputes } = useAppStore();
 
   // Fetch milestone submissions for active projects
@@ -58,16 +59,18 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
   const usdValue = tokenToUsd(project.totalBudget, project.tokenType);
 
   const handleRequestRefund = async () => {
+    if (!project.onChainId) {
+      alert('This project has no on-chain escrow ID. Cannot request refund.');
+      return;
+    }
     setRefundPending(true);
     try {
       const { requestRefundContractCall } = await import('../lib/contracts');
-      const onChainProjectId = project.onChainId || 1;
       await requestRefundContractCall(
-        onChainProjectId,
+        project.onChainId,
         project.tokenType as 'STX' | 'sBTC',
         async (txData) => {
           console.log('request-refund TX sent:', txData.txId);
-          // Update backend status
           onAction(project.id, 'cancel');
           setRefundPending(false);
         },
@@ -79,6 +82,33 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
     } catch (err: any) {
       console.error('request-refund failed:', err);
       setRefundPending(false);
+    }
+  };
+
+  const handleEmergencyRefund = async () => {
+    if (!project.onChainId) {
+      alert('This project has no on-chain escrow ID. Cannot request emergency refund.');
+      return;
+    }
+    setEmergencyRefundPending(true);
+    try {
+      const { emergencyRefundContractCall } = await import('../lib/contracts');
+      await emergencyRefundContractCall(
+        project.onChainId,
+        project.tokenType as 'STX' | 'sBTC',
+        async (txData) => {
+          console.log('emergency-refund TX sent:', txData.txId);
+          onAction(project.id, 'cancel');
+          setEmergencyRefundPending(false);
+        },
+        () => {
+          console.log('emergency-refund TX cancelled');
+          setEmergencyRefundPending(false);
+        }
+      );
+    } catch (err: any) {
+      console.error('emergency-refund failed:', err);
+      setEmergencyRefundPending(false);
     }
   };
 
@@ -199,15 +229,29 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
             </button>
           )}
 
-          {/* Refund button — client only, active funded projects */}
+          {/* Refund buttons — client only, active funded projects */}
           {role === 'client' && isActive && project.isFunded && (
-            <button
-              onClick={handleRequestRefund}
-              disabled={refundPending || isProcessing}
-              className="px-4 py-2 bg-yellow-950/40 text-yellow-400 text-xs font-bold uppercase tracking-wider rounded hover:bg-yellow-600 hover:text-white border border-yellow-900/30 transition-all flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {refundPending ? 'Signing TX...' : <><AlertCircle className="w-3 h-3" /> Request Refund</>}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Full Refund — only if no milestones started */}
+              {completedMilestones === 0 && (
+                <button
+                  onClick={handleRequestRefund}
+                  disabled={refundPending || isProcessing}
+                  className="px-4 py-2 bg-yellow-950/40 text-yellow-400 text-xs font-bold uppercase tracking-wider rounded hover:bg-yellow-600 hover:text-white border border-yellow-900/30 transition-all flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {refundPending ? 'Signing TX...' : <><AlertCircle className="w-3 h-3" /> Full Refund</>}
+                </button>
+              )}
+              {/* Emergency Refund — partial refund after ~24h timeout */}
+              <button
+                onClick={handleEmergencyRefund}
+                disabled={emergencyRefundPending || isProcessing}
+                className="px-4 py-2 bg-red-950/40 text-red-400 text-xs font-bold uppercase tracking-wider rounded hover:bg-red-600 hover:text-white border border-red-900/30 transition-all flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Available after ~24 hours if project is inactive. Refunds unreleased milestones."
+              >
+                {emergencyRefundPending ? 'Signing TX...' : <><Shield className="w-3 h-3" /> Emergency Refund</>}
+              </button>
+            </div>
           )}
         </div>
 
@@ -226,6 +270,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, role, onAction, isPr
                 onAction={onAction}
                 isProcessing={isProcessing}
                 submissions={submissions.filter(s => s.milestoneNum === index + 1)}
+                disputes={disputes.filter(d => d.milestoneNum === index + 1)}
               />
             ))}
           </div>
@@ -266,7 +311,8 @@ const MilestoneItem: React.FC<{
   onAction: (projectId: string, actionType: string, payload?: any) => void;
   isProcessing?: boolean;
   submissions: BackendMilestoneSubmission[];
-}> = ({ index, milestone, project, role, onAction, isProcessing, submissions }) => {
+  disputes: import('../lib/api').BackendDispute[];
+}> = ({ index, milestone, project, role, onAction, isProcessing, submissions, disputes }) => {
   const [submissionLink, setSubmissionLink] = React.useState('');
   const [txPending, setTxPending] = React.useState(false);
 
@@ -275,39 +321,72 @@ const MilestoneItem: React.FC<{
     ? submissions.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0]
     : null;
 
+  // Check if THIS specific milestone has an open dispute (contract will reject with ERR-DISPUTE-ACTIVE)
+  const hasDisputeOnThisMilestone = disputes.some(d => d.status === 'open');
+
+  // Check if the milestone was already completed on-chain (any previous submission exists)
+  // After a client rejection, on-chain state is still complete=true, so we skip the contract call
+  const wasAlreadyCompletedOnChain = submissions.length > 0;
+
   const milestoneNum = milestone.id; // 1-based, matches contract
-  const onChainProjectId = project.onChainId || 1; // fallback to 1 until properly tracked
+  const onChainProjectId = project.onChainId; // null until escrow funded
 
   const handleFreelancerSubmit = async () => {
     if (!submissionLink) return;
+    if (!onChainProjectId) {
+      alert('Escrow not yet deployed on-chain. Cannot submit milestone.');
+      return;
+    }
+    if (hasDisputeOnThisMilestone) {
+      alert('This milestone has an active dispute. You cannot submit work until it is resolved.');
+      return;
+    }
     setTxPending(true);
     try {
-      const { completeMilestoneContractCall } = await import('../lib/contracts');
-      await completeMilestoneContractCall(
-        onChainProjectId,
-        milestoneNum,
-        (txData) => {
-          console.log('complete-milestone TX sent:', txData.txId);
-          onAction(project.id, 'submit_milestone', {
-            milestoneId: milestone.id,
-            link: submissionLink,
-            completionTxId: txData.txId,
-          });
-          setTxPending(false);
-        },
-        () => {
-          console.log('complete-milestone TX cancelled');
-          setTxPending(false);
-        }
-      );
+      if (wasAlreadyCompletedOnChain) {
+        // Milestone already marked complete on-chain (e.g. after a rejection + resubmission).
+        // Skip the contract call — just resubmit the new deliverable to the backend.
+        const prevTxId = submissions.find(s => s.completionTxId)?.completionTxId || 'resubmission';
+        onAction(project.id, 'submit_milestone', {
+          milestoneId: milestone.id,
+          link: submissionLink,
+          completionTxId: prevTxId,
+        });
+        setTxPending(false);
+      } else {
+        // First-time completion: call the smart contract
+        const { completeMilestoneContractCall } = await import('../lib/contracts');
+        await completeMilestoneContractCall(
+          onChainProjectId,
+          milestoneNum,
+          (txData) => {
+            console.log('complete-milestone TX sent:', txData.txId);
+            onAction(project.id, 'submit_milestone', {
+              milestoneId: milestone.id,
+              link: submissionLink,
+              completionTxId: txData.txId,
+            });
+            setTxPending(false);
+          },
+          () => {
+            console.log('complete-milestone TX cancelled');
+            setTxPending(false);
+          }
+        );
+      }
     } catch (err: any) {
       console.error('complete-milestone failed:', err);
+      alert(`Milestone submission failed: ${err.message || 'Transaction was rejected by the contract. Please try again.'}`);
       setTxPending(false);
     }
   };
 
   const handleClientApprove = async () => {
     if (!latestSubmission) return;
+    if (!onChainProjectId) {
+      alert('Escrow not yet deployed on-chain. Cannot release funds.');
+      return;
+    }
     setTxPending(true);
     try {
       const { releaseMilestoneContractCall } = await import('../lib/contracts');
@@ -331,6 +410,7 @@ const MilestoneItem: React.FC<{
       );
     } catch (err: any) {
       console.error('release-milestone failed:', err);
+      alert(`Release failed: ${err.message || 'Transaction was rejected. Please try again.'}`);
       setTxPending(false);
     }
   };
@@ -378,13 +458,27 @@ const MilestoneItem: React.FC<{
             )}
 
             {milestone.status === 'approved' && (
-              <span className="text-orange-500/80">Fee: {(milestone.amount * 0.10).toFixed(4)} {project.tokenType}</span>
+              <span className="text-green-500/80 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Released to freelancer
+              </span>
             )}
           </div>
 
           {/* Action Area based on Role and Status */}
-          {role === 'freelancer' && milestone.status === 'pending' && project.isFunded && (
-            <div className="mt-3 flex gap-2">
+          {role === 'freelancer' && milestone.status === 'pending' && project.isFunded && hasDisputeOnThisMilestone && (
+            <div className="mt-2 text-[10px] text-red-500 font-bold font-mono border-t border-red-900/30 pt-2 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Dispute active on this milestone — submission blocked until resolved.
+            </div>
+          )}
+
+          {role === 'freelancer' && milestone.status === 'pending' && project.isFunded && !hasDisputeOnThisMilestone && (
+            <div className="mt-3">
+              {wasAlreadyCompletedOnChain && (
+                <p className="text-[10px] text-yellow-500 font-mono mb-2 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Previous submission was rejected — resubmit your updated deliverable below.
+                </p>
+              )}
+              <div className="flex gap-2">
               <input
                 type="text"
                 placeholder="Proof of Work Link (Github/Figma)"
@@ -397,8 +491,9 @@ const MilestoneItem: React.FC<{
                 disabled={!submissionLink || isProcessing || txPending}
                 className="px-3 py-2 bg-blue-600 text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-blue-500 disabled:opacity-50"
               >
-                {txPending ? 'Signing TX...' : 'Submit Work'}
+                {txPending ? 'Signing TX...' : wasAlreadyCompletedOnChain ? 'Resubmit Work' : 'Submit Work'}
               </button>
+              </div>
             </div>
           )}
 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Wallet, LogOut, Menu, X, Hexagon, Zap, Search, Twitter, ChevronRight, Trophy } from 'lucide-react';
+import { Wallet, LogOut, Hexagon, Zap, Search, Twitter, Trophy, Home, Store, Briefcase, Code2 } from 'lucide-react';
 import { WalletState, ViewType, UserRole } from '../types';
 
 interface NavbarProps {
@@ -15,14 +15,11 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ wallet, userRole, onConnect, onDisconnect, currentView, onNavigate, searchTerm, onSearchChange }) => {
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
 
   const NavLink = ({ view, label }: { view: ViewType; label: string }) => (
     <button
-      onClick={() => {
-        onNavigate(view);
-        setIsMenuOpen(false);
-      }}
+      onClick={() => onNavigate(view)}
       className={`relative px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all duration-300 group overflow-hidden ${
         currentView === view ? 'text-white' : 'text-slate-400 hover:text-white'
       }`}
@@ -35,54 +32,43 @@ const Navbar: React.FC<NavbarProps> = ({ wallet, userRole, onConnect, onDisconne
     </button>
   );
 
-  // Mobile Menu Item Component with enhanced accessibility and animation
-  const MobileMenuItem = ({ view, label, active, index }: { view: ViewType, label: string, active: boolean, index: number }) => (
+  // Mobile bottom nav item
+  const BottomNavItem = ({ icon: Icon, label, active, onClick }: { icon: React.ElementType; label: string; active: boolean; onClick: () => void }) => (
     <button
-      onClick={() => {
-        onNavigate(view);
-        setIsMenuOpen(false);
-      }}
-      style={{ transitionDelay: `${isMenuOpen ? index * 75 : 0}ms` }}
-      className={`w-full flex items-center justify-between px-5 py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 transform group ${
-        isMenuOpen ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'
-      } ${
-        active 
-          ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.1)]' 
-          : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:pl-7'
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 transition-all duration-200 active:scale-90 relative group ${
+        active ? 'text-orange-500' : 'text-slate-500'
       }`}
     >
-      <span className="flex items-center gap-3">
-         <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${active ? 'bg-orange-500 scale-125 shadow-[0_0_8px_rgba(249,115,22,0.8)]' : 'bg-slate-700 group-hover:bg-slate-400'}`}></span>
-         {label}
-      </span>
-      {active ? (
-         <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)] animate-pulse"></div>
-      ) : (
-         <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
-      )}
+      <div className="relative">
+        <Icon className={`w-[22px] h-[22px] transition-all duration-200 ${active ? 'text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]' : 'group-active:text-slate-300'}`} strokeWidth={active ? 2.5 : 2} />
+        {active && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.8)]"></span>}
+      </div>
+      <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5">{label}</span>
     </button>
   );
 
   return (
+    <>
     <nav className="sticky top-0 z-50 bg-[#020617]/90 backdrop-blur-xl border-b border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
       {/* Glowing bottom line */}
       <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-24 items-center gap-4">
+        <div className="flex justify-between h-14 md:h-24 items-center gap-4">
           <div className="flex items-center cursor-pointer group shrink-0" onClick={() => onNavigate('home')}>
             <div className="flex flex-col justify-center relative">
-               <div className="flex items-center gap-3">
-                 <div className="relative w-10 h-10 flex items-center justify-center">
+               <div className="flex items-center gap-2 md:gap-3">
+                 <div className="relative w-7 h-7 md:w-10 md:h-10 flex items-center justify-center">
                     <div className="absolute inset-0 bg-orange-600 blur-lg opacity-20 group-hover:opacity-40 transition-opacity animate-pulse"></div>
                     <Hexagon className="h-full w-full text-orange-600 fill-orange-950/50 relative z-10 group-hover:rotate-180 transition-transform duration-700 ease-in-out" strokeWidth={1.5} />
-                    <Zap className="absolute h-4 w-4 text-white z-20 animate-bounce" style={{ animationDuration: '3s' }} />
+                    <Zap className="absolute h-3 w-3 md:h-4 md:w-4 text-white z-20 animate-bounce" style={{ animationDuration: '3s' }} />
                  </div>
                  <div className="flex flex-col">
-                   <span className="text-3xl font-black text-white tracking-tighter leading-none select-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+                   <span className="text-xl md:text-3xl font-black text-white tracking-tighter leading-none select-none" style={{ fontFamily: 'Inter, sans-serif' }}>
                       STX<span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500">WORX</span>
                    </span>
-                   <span className="text-[9px] font-bold text-slate-500 tracking-[0.2em] mt-1 group-hover:text-orange-500 transition-colors uppercase pl-0.5 whitespace-nowrap">
+                   <span className="hidden md:block text-[9px] font-bold text-slate-500 tracking-[0.2em] mt-1 group-hover:text-orange-500 transition-colors uppercase pl-0.5 whitespace-nowrap">
                      Power by $STX & $BTC
                    </span>
                  </div>
@@ -158,102 +144,105 @@ const Navbar: React.FC<NavbarProps> = ({ wallet, userRole, onConnect, onDisconne
             )}
           </div>
 
-          {/* Animated Hamburger Button */}
-          <div className="flex items-center md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`relative p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50 overflow-hidden group w-10 h-10 flex items-center justify-center ${
-                isMenuOpen ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-              }`}
-              aria-label="Toggle navigation menu"
-              aria-expanded={isMenuOpen}
-            >
-              <div className="relative w-6 h-6">
-                 {/* Icon transformation wrapper */}
-                 <div className={`absolute inset-0 transition-all duration-300 transform origin-center ${isMenuOpen ? 'opacity-0 scale-50 rotate-90' : 'opacity-100 scale-100 rotate-0'}`}>
-                    <Menu className="w-6 h-6" />
-                 </div>
-                 <div className={`absolute inset-0 transition-all duration-300 transform origin-center ${isMenuOpen ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90'}`}>
-                    <X className="w-6 h-6" />
-                 </div>
-              </div>
-            </button>
+          {/* Mobile: Search toggle (nav moved to bottom bar) */}
+          <button
+            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+            className={`md:hidden p-2 rounded-lg transition-all duration-200 active:scale-90 ${
+              isMobileSearchOpen ? 'text-orange-500 bg-orange-500/10' : 'text-slate-400'
+            }`}
+            aria-label="Toggle search"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Search Dropdown */}
+      <div className={`md:hidden overflow-hidden transition-all duration-300 ease-out ${isMobileSearchOpen ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="px-4 pb-3">
+          <div className="relative w-full">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-slate-500" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 bg-[#0a0f1e] border border-slate-700/50 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
           </div>
         </div>
       </div>
+    </nav>
 
-      {/* Mobile menu with smooth transitions */}
-      <div 
-         className={`md:hidden absolute top-full left-0 w-full bg-[#020617]/95 backdrop-blur-2xl border-b border-slate-800 overflow-hidden transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${
-           isMenuOpen 
-             ? 'max-h-[85vh] opacity-100 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-b border-orange-500/10' 
-             : 'max-h-0 opacity-0 border-transparent'
-         }`}
-      >
-        <div className="p-6 space-y-6">
-           {/* Mobile Search */}
-           <div 
-             className={`relative w-full group transition-all duration-700 transform ${
-                isMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-[-10px] opacity-0'
-             }`}
-           >
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-500" />
-              </div>
-              <input
-                type="text"
-                className="block w-full pl-10 pr-3 py-3 bg-[#0a0f1e] border border-slate-700 rounded-xl text-slate-200 text-base focus:outline-none focus:border-orange-500 transition-colors"
-                placeholder="Search projects..."
-                value={searchTerm}
-                onChange={(e) => {
-                   onSearchChange(e.target.value);
-                }}
-              />
-           </div>
+    {/* ═══════════════════════════════════════════════════════ */}
+    {/* Mobile Bottom Navigation — App-style dock               */}
+    {/* ═══════════════════════════════════════════════════════ */}
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+      {/* Top glow line */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-orange-500/30 to-transparent"></div>
 
-           {/* Mobile Navigation Links */}
-           <div className="space-y-2">
-             <MobileMenuItem view="home" label="Home" active={currentView === 'home'} index={1} />
-             <MobileMenuItem view="browse" label="Marketplace" active={currentView === 'browse'} index={2} />
-             <MobileMenuItem view="leaderboard" label="Leaderboard" active={currentView === 'leaderboard'} index={3} />
-             {wallet.isConnected && userRole && (
-                <>
-                  <div className={`h-px bg-slate-800/50 my-2 transition-all duration-500 delay-150 ${isMenuOpen ? 'opacity-100 width-full' : 'opacity-0 width-0'}`}></div>
-                  {userRole === 'client' && (
-                    <MobileMenuItem view="client" label="Client Dashboard" active={currentView === 'client'} index={4} />
-                  )}
-                  {userRole === 'freelancer' && (
-                    <MobileMenuItem view="freelancer" label="Freelancer Dashboard" active={currentView === 'freelancer'} index={5} />
-                  )}
-                </>
-             )}
-           </div>
+      <div className="bg-[#020617]/95 backdrop-blur-2xl border-t border-white/[0.06]">
+        <div className="flex items-end justify-around px-1 pt-1 pb-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
 
-           {/* Mobile Auth Buttons */}
-           <div 
-             className={`pt-4 border-t border-slate-800 transition-all duration-700 delay-300 transform ${
-                isMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-             }`}
-           >
-             {wallet.isConnected ? (
-                <button 
-                   onClick={onDisconnect} 
-                   className="w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-red-500/10 text-red-500 font-bold uppercase tracking-wider hover:bg-red-500/20 border border-red-500/20 transition-all"
-                >
-                  <LogOut className="h-4 w-4" /> Disconnect Wallet
-                </button>
-             ) : (
-                <button 
-                   onClick={() => { onConnect(); setIsMenuOpen(false); }} 
-                   className="w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-orange-600 text-white font-bold uppercase tracking-wider hover:bg-orange-500 shadow-lg shadow-orange-900/20 transition-all"
-                >
-                  <Wallet className="h-4 w-4" /> Connect Wallet
-                </button>
-             )}
-           </div>
+          {/* ── Left nav items ── */}
+          <BottomNavItem icon={Home} label="Home" active={currentView === 'home'} onClick={() => onNavigate('home')} />
+          <BottomNavItem icon={Store} label="Market" active={currentView === 'browse'} onClick={() => onNavigate('browse')} />
+
+          {/* ── Center: Wallet Button (raised) ── */}
+          <div className="flex flex-col items-center -mt-6 relative">
+            {/* Ambient glow behind button */}
+            {!wallet.isConnected && (
+              <div className="absolute top-1 w-14 h-14 rounded-full bg-orange-500/20 blur-xl animate-pulse pointer-events-none"></div>
+            )}
+
+            {wallet.isConnected ? (
+              <button
+                onClick={onDisconnect}
+                className="relative w-14 h-14 rounded-full bg-[#0b0f19] border-2 border-green-500/30 shadow-[0_0_20px_rgba(34,197,94,0.15),0_-4px_12px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center transition-all duration-200 active:scale-90"
+                aria-label="Wallet connected — tap to disconnect"
+              >
+                {/* Live indicator dot */}
+                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[#020617] shadow-[0_0_6px_rgba(34,197,94,0.8)] animate-pulse"></div>
+                <Wallet className="w-5 h-5 text-green-400" />
+                <span className="text-[8px] font-bold text-orange-500 mt-0.5 leading-none">
+                  {wallet.balanceSTX < 10000 ? wallet.balanceSTX.toFixed(0) : `${(wallet.balanceSTX / 1000).toFixed(0)}k`}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={onConnect}
+                className="relative w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 shadow-[0_0_25px_rgba(249,115,22,0.3),0_-4px_12px_rgba(0,0,0,0.3)] flex items-center justify-center transition-all duration-200 active:scale-90 group"
+                aria-label="Connect wallet"
+              >
+                <Wallet className="w-6 h-6 text-white group-active:rotate-12 transition-transform" />
+                {/* Shimmer sweep */}
+                <span className="absolute inset-0 rounded-full overflow-hidden">
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700"></span>
+                </span>
+              </button>
+            )}
+
+            <span className={`text-[9px] font-bold uppercase tracking-wider mt-1 ${wallet.isConnected ? 'text-green-400' : 'text-orange-500'}`}>
+              {wallet.isConnected ? `${wallet.address?.slice(0,3)}...${wallet.address?.slice(-2)}` : 'Connect'}
+            </span>
+          </div>
+
+          {/* ── Right nav items ── */}
+          <BottomNavItem icon={Trophy} label="Ranks" active={currentView === 'leaderboard'} onClick={() => onNavigate('leaderboard')} />
+          {wallet.isConnected && userRole === 'client' ? (
+            <BottomNavItem icon={Briefcase} label="Client" active={currentView === 'client'} onClick={() => onNavigate('client')} />
+          ) : wallet.isConnected && userRole === 'freelancer' ? (
+            <BottomNavItem icon={Code2} label="Work" active={currentView === 'freelancer'} onClick={() => onNavigate('freelancer')} />
+          ) : (
+            <BottomNavItem icon={Search} label="Search" active={isMobileSearchOpen} onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)} />
+          )}
+
         </div>
       </div>
-    </nav>
+    </div>
+    </>
   );
 };
 

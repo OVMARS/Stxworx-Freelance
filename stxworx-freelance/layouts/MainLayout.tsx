@@ -131,7 +131,7 @@ const MainLayout: React.FC = () => {
         onSearchChange={handleSearchChange}
       />
 
-      <main className="min-h-[calc(100vh-300px)]">
+      <main className="min-h-[calc(100vh-300px)] pb-20 md:pb-0">
         <Outlet />
       </main>
 

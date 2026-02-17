@@ -7,7 +7,9 @@ import {
     PostConditionMode,
     StandardPrincipalCV,
     UIntCV,
-    ContractPrincipalCV
+    ContractPrincipalCV,
+    fetchCallReadOnlyFunction,
+    cvToValue,
 } from '@stacks/transactions';
 import { APP_CONFIG, CONTRACT_ADDRESS, CONTRACT_NAME, SBTC_CONTRACT_ADDRESS, SBTC_CONTRACT_NAME } from './constants';
 
@@ -17,6 +19,24 @@ interface ProjectData {
     tokenType: 'STX' | 'sBTC';
     milestones: { amount: number }[]; // Array of exactly 4 milestone objects with 'amount' in Tokens
 }
+
+/* ── Read-only: get current on-chain project count ── */
+export const getOnChainProjectCount = async (): Promise<number> => {
+    try {
+        const result = await fetchCallReadOnlyFunction({
+            contractAddress: CONTRACT_ADDRESS,
+            contractName: CONTRACT_NAME,
+            functionName: 'get-project-count',
+            functionArgs: [],
+            senderAddress: CONTRACT_ADDRESS,
+            network: STACKS_TESTNET,
+        });
+        return Number(cvToValue(result));
+    } catch (err) {
+        console.error('Failed to read project count:', err);
+        return 0;
+    }
+};
 
 export const createProjectContractCall = async (
     data: ProjectData,
@@ -141,7 +161,7 @@ export const fileDisputeContractCall = async (
     });
 };
 
-/* ── Request Full Refund (Client) ── */
+/* ── Request Full Refund (Client — no milestone activity) ── */
 export const requestRefundContractCall = async (
     projectId: number,
     tokenType: 'STX' | 'sBTC',
@@ -149,6 +169,31 @@ export const requestRefundContractCall = async (
     onCancel: () => void
 ) => {
     const functionName = tokenType === 'STX' ? 'request-full-refund-stx' : 'request-full-refund-sbtc';
+    const functionArgs: (UIntCV | ContractPrincipalCV)[] = [uintCV(projectId)];
+    if (tokenType === 'sBTC') {
+        functionArgs.push(contractPrincipalCV(SBTC_CONTRACT_ADDRESS, SBTC_CONTRACT_NAME));
+    }
+    await openContractCall({
+        network: STACKS_TESTNET,
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: CONTRACT_NAME,
+        functionName,
+        functionArgs,
+        postConditionMode: PostConditionMode.Allow,
+        onFinish,
+        onCancel,
+        appDetails: { name: APP_CONFIG.name, icon: window.location.origin + APP_CONFIG.icon },
+    });
+};
+
+/* ── Emergency Refund (Client — partial refund after ~24h timeout) ── */
+export const emergencyRefundContractCall = async (
+    projectId: number,
+    tokenType: 'STX' | 'sBTC',
+    onFinish: (data: any) => void,
+    onCancel: () => void
+) => {
+    const functionName = tokenType === 'STX' ? 'emergency-refund-stx' : 'emergency-refund-sbtc';
     const functionArgs: (UIntCV | ContractPrincipalCV)[] = [uintCV(projectId)];
     if (tokenType === 'sBTC') {
         functionArgs.push(contractPrincipalCV(SBTC_CONTRACT_ADDRESS, SBTC_CONTRACT_NAME));
