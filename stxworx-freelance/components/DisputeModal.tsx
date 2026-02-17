@@ -7,12 +7,13 @@ interface DisputeModalProps {
   projectTitle: string;
   milestoneCount: number;
   onChainId?: number | null;
+  fixedMilestoneNum?: number;
   onClose: () => void;
 }
 
-const DisputeModal: React.FC<DisputeModalProps> = ({ projectId, projectTitle, milestoneCount, onChainId, onClose }) => {
+const DisputeModal: React.FC<DisputeModalProps> = ({ projectId, projectTitle, milestoneCount, onChainId, fixedMilestoneNum, onClose }) => {
   const { createDispute, isProcessing } = useAppStore();
-  const [milestoneNum, setMilestoneNum] = useState(1);
+  const [milestoneNum, setMilestoneNum] = useState(fixedMilestoneNum || 1);
   const [reason, setReason] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [error, setError] = useState('');
@@ -84,28 +85,36 @@ const DisputeModal: React.FC<DisputeModalProps> = ({ projectId, projectTitle, mi
             </div>
           </div>
 
-          {/* Milestone selector */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Disputed Milestone
-            </label>
-            <div className="flex gap-2">
-              {Array.from({ length: milestoneCount }, (_, i) => i + 1).map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => setMilestoneNum(num)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold uppercase transition-all border ${
-                    milestoneNum === num
-                      ? 'bg-red-600/20 border-red-500/50 text-red-400'
-                      : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
-                  }`}
-                >
-                  M{num}
-                </button>
-              ))}
+          {/* Milestone selector — hidden when opened from per-milestone button */}
+          {!fixedMilestoneNum && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Disputed Milestone
+              </label>
+              <div className="flex gap-2">
+                {Array.from({ length: milestoneCount }, (_, i) => i + 1).map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setMilestoneNum(num)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold uppercase transition-all border ${
+                      milestoneNum === num
+                        ? 'bg-red-600/20 border-red-500/50 text-red-400'
+                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
+                    }`}
+                  >
+                    M{num}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+          {fixedMilestoneNum && (
+            <div className="flex items-center gap-2 p-3 bg-slate-950 border border-slate-800 rounded-lg">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Milestone:</span>
+              <span className="text-sm font-bold text-red-400">M{fixedMilestoneNum}</span>
+            </div>
+          )}
 
           {/* Reason */}
           <div>

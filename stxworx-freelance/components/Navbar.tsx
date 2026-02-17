@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Wallet, LogOut, Hexagon, Zap, Search, Twitter, Trophy, Home, Store, Briefcase, Code2 } from 'lucide-react';
+import { Wallet, LogOut, Hexagon, Zap, Search, Twitter, Trophy, Home, Store, Briefcase, Code2, Bell, CheckCircle, AlertTriangle, XCircle, FileText, Award } from 'lucide-react';
 import { WalletState, ViewType, UserRole } from '../types';
+import { useAppStore } from '../stores/useAppStore';
 
 interface NavbarProps {
   wallet: WalletState;
@@ -16,6 +17,109 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ wallet, userRole, onConnect, onDisconnect, currentView, onNavigate, searchTerm, onSearchChange }) => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
+  const [isNotifOpen, setIsNotifOpen] = React.useState(false);
+  const notifRef = React.useRef<HTMLDivElement>(null);
+
+  const {
+    notifications,
+    unreadNotificationCount,
+    fetchNotifications,
+    fetchUnreadCount,
+    markNotificationRead,
+    markAllNotificationsRead,
+  } = useAppStore();
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Poll unread count every 30s while wallet is connected
+  React.useEffect(() => {
+    if (!wallet.isConnected) return;
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [wallet.isConnected]);
+
+  const handleBellClick = () => {
+    if (!isNotifOpen) {
+      fetchNotifications();
+    }
+    setIsNotifOpen(!isNotifOpen);
+  };
+
+  const getNotifIcon = (type: string) => {
+    switch (type) {
+      case 'milestone_submitted': return <FileText className="w-4 h-4 text-blue-400" />;
+      case 'milestone_approved': return <CheckCircle className="w-4 h-4 text-green-400" />;
+      case 'milestone_rejected': return <XCircle className="w-4 h-4 text-red-400" />;
+      case 'dispute_filed': case 'dispute_resolved': return <AlertTriangle className="w-4 h-4 text-yellow-400" />;
+      case 'proposal_received': case 'proposal_accepted': return <Briefcase className="w-4 h-4 text-orange-400" />;
+      case 'project_completed': return <Award className="w-4 h-4 text-green-400" />;
+      default: return <Bell className="w-4 h-4 text-slate-400" />;
+    }
+  };
+
+  const NotificationDropdown = () => (
+    <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-[#0b0f19] border border-slate-800 rounded-xl shadow-2xl shadow-black/40 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Notifications</h3>
+        {unreadNotificationCount > 0 && (
+          <button
+            onClick={() => markAllNotificationsRead()}
+            className="text-[10px] font-bold text-orange-500 hover:text-orange-400 uppercase tracking-wider transition-colors"
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-80 overflow-y-auto custom-scrollbar">
+        {notifications.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <Bell className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">No notifications yet</p>
+          </div>
+        ) : (
+          notifications.slice(0, 20).map((notif) => (
+            <div
+              key={notif.id}
+              onClick={() => {
+                if (!notif.isRead) markNotificationRead(notif.id);
+              }}
+              className={`flex items-start gap-3 px-4 py-3 border-b border-slate-800/50 cursor-pointer transition-colors hover:bg-slate-800/30 ${
+                !notif.isRead ? 'bg-orange-500/5' : ''
+              }`}
+            >
+              <div className="shrink-0 mt-0.5">{getNotifIcon(notif.type)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${!notif.isRead ? 'text-white' : 'text-slate-400'}`}>
+                    {notif.title}
+                  </span>
+                  {!notif.isRead && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"></span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{notif.message}</p>
+                <p className="text-[10px] text-slate-600 mt-1">
+                  {new Date(notif.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   const NavLink = ({ view, label }: { view: ViewType; label: string }) => (
     <button
@@ -105,6 +209,25 @@ const Navbar: React.FC<NavbarProps> = ({ wallet, userRole, onConnect, onDisconne
                )}
             </div>
 
+            {/* Notification Bell */}
+            {wallet.isConnected && (
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={handleBellClick}
+                  className="relative p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center px-1 bg-orange-500 text-white text-[10px] font-black rounded-full border-2 border-[#020617] shadow-[0_0_8px_rgba(249,115,22,0.5)]">
+                      {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                    </span>
+                  )}
+                </button>
+                {isNotifOpen && <NotificationDropdown />}
+              </div>
+            )}
+
             {wallet.isConnected ? (
               <div className="flex items-center gap-4 bg-[#0b0f19] px-4 py-2 rounded-xl border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
                 <div className="flex flex-col items-end text-xs font-mono mr-2">
@@ -144,16 +267,37 @@ const Navbar: React.FC<NavbarProps> = ({ wallet, userRole, onConnect, onDisconne
             )}
           </div>
 
-          {/* Mobile: Search toggle (nav moved to bottom bar) */}
-          <button
-            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            className={`md:hidden p-2 rounded-lg transition-all duration-200 active:scale-90 ${
-              isMobileSearchOpen ? 'text-orange-500 bg-orange-500/10' : 'text-slate-400'
-            }`}
-            aria-label="Toggle search"
-          >
-            <Search className="w-5 h-5" />
-          </button>
+          {/* Mobile: Notification bell + Search toggle */}
+          <div className="flex items-center gap-1 md:hidden">
+            {wallet.isConnected && (
+              <div className="relative" ref={!isNotifOpen ? undefined : notifRef}>
+                <button
+                  onClick={handleBellClick}
+                  className={`relative p-2 rounded-lg transition-all duration-200 active:scale-90 ${
+                    isNotifOpen ? 'text-orange-500 bg-orange-500/10' : 'text-slate-400'
+                  }`}
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] flex items-center justify-center px-0.5 bg-orange-500 text-white text-[9px] font-black rounded-full border-2 border-[#020617]">
+                      {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                    </span>
+                  )}
+                </button>
+                {isNotifOpen && <NotificationDropdown />}
+              </div>
+            )}
+            <button
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+              className={`p-2 rounded-lg transition-all duration-200 active:scale-90 ${
+                isMobileSearchOpen ? 'text-orange-500 bg-orange-500/10' : 'text-slate-400'
+              }`}
+              aria-label="Toggle search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 

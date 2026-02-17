@@ -147,6 +147,17 @@ export interface BackendNFT {
   createdAt: string;
 }
 
+export interface BackendNotification {
+  id: number;
+  userId: number;
+  type: 'milestone_submitted' | 'milestone_approved' | 'milestone_rejected' | 'dispute_filed' | 'dispute_resolved' | 'proposal_received' | 'proposal_accepted' | 'project_completed';
+  title: string;
+  message: string;
+  projectId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface AdminDashboardStats {
   totalUsers: number;
   totalProjects: number;
@@ -409,6 +420,19 @@ export const api = {
       }),
   },
 
+  /* ── Notifications ── */
+  notifications: {
+    list: () => request<BackendNotification[]>('/notifications'),
+
+    unreadCount: () => request<{ count: number }>('/notifications/unread-count'),
+
+    markRead: (id: number) =>
+      request<{ message: string }>(`/notifications/${id}/read`, { method: 'PATCH' }),
+
+    markAllRead: () =>
+      request<{ message: string }>('/notifications/read-all', { method: 'PATCH' }),
+  },
+
   /* ── Admin ── */
   admin: {
     login: (username: string, password: string) =>
@@ -439,16 +463,16 @@ export const api = {
 
     disputes: () => request<BackendDispute[]>('/admin/disputes'),
 
-    resolveDispute: (id: number, resolution: string, resolutionTxId: string) =>
+    resolveDispute: (id: number, resolution: string, resolutionTxId: string, favorFreelancer: boolean) =>
       request<BackendDispute>(`/admin/disputes/${id}/resolve`, {
         method: 'PATCH',
-        body: JSON.stringify({ resolution, resolutionTxId }),
+        body: JSON.stringify({ resolution, resolutionTxId, favorFreelancer }),
       }),
 
     resetDispute: (id: number, resolution: string, resolutionTxId: string) =>
       request<BackendDispute>(`/admin/disputes/${id}/reset`, {
         method: 'PATCH',
-        body: JSON.stringify({ resolution, resolutionTxId }),
+        body: JSON.stringify({ resolution, resolutionTxId, favorFreelancer: false }),
       }),
 
     abandonedProjects: () => request<BackendProject[]>('/admin/recovery/abandoned'),
