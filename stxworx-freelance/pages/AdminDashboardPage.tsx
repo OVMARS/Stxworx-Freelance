@@ -11,14 +11,14 @@ const AdminDashboardPage: React.FC = () => {
 
   useEffect(() => {
     checkAdminSession().then((ok) => {
-      if (!ok) navigate('/admin', { replace: true });
+      if (!ok) navigate('/stx-ops-9x7k', { replace: true });
       setChecking(false);
     });
   }, []);
 
   const handleLogout = async () => {
     await adminLogout();
-    navigate('/admin', { replace: true });
+    navigate('/stx-ops-9x7k', { replace: true });
   };
 
   if (checking) {

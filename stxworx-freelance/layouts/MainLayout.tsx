@@ -70,8 +70,8 @@ const MainLayout: React.FC = () => {
     if (p === '/freelancer') return 'freelancer';
     if (p === '/profile') return 'profile';
     if (p === '/edit-profile') return 'edit-profile';
-    if (p === '/admin') return 'admin-login';
-    if (p === '/admin/dashboard') return 'admin-dashboard';
+    if (p === '/stx-ops-9x7k') return 'admin-login';
+    if (p === '/stx-ops-9x7k/dashboard') return 'admin-dashboard';
     return 'home';
   };
 
@@ -84,8 +84,8 @@ const MainLayout: React.FC = () => {
       freelancer: '/freelancer',
       profile: '/profile',
       'edit-profile': '/edit-profile',
-      'admin-login': '/admin',
-      'admin-dashboard': '/admin/dashboard',
+      'admin-login': '/stx-ops-9x7k',
+      'admin-dashboard': '/stx-ops-9x7k/dashboard',
     };
     navigate(map[v] || '/');
     window.scrollTo(0, 0);
@@ -113,7 +113,7 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isAdminRoute = location.pathname.startsWith('/stx-ops-9x7k');
   if (isAdminRoute) {
     return <Outlet />;
   }

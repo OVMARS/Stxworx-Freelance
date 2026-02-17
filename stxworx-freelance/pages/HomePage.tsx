@@ -242,7 +242,6 @@ const HomePage: React.FC = () => {
                 <li><a href="#" className="hover:text-orange-500 transition-colors">Stacks Docs</a></li>
                 <li><a href="#" className="hover:text-orange-500 transition-colors">Get Wallet</a></li>
                 <li><a href="#" className="hover:text-orange-500 transition-colors">Security</a></li>
-                <li><button onClick={() => navigate('/admin')} className="hover:text-orange-500 transition-colors">Admin Login</button></li>
               </ul>
             </div>
             <div>

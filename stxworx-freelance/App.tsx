@@ -85,8 +85,8 @@ const App: React.FC = () => (
           <Route path="/edit-profile" element={<EditProfilePage />} />
         </Route>
         <Route element={<MainLayout />}>
-          <Route path="/admin" element={<AdminLoginPage />} />
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/stx-ops-9x7k" element={<AdminLoginPage />} />
+          <Route path="/stx-ops-9x7k/dashboard" element={<AdminDashboardPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

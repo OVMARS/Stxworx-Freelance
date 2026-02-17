@@ -7,7 +7,7 @@ const AdminLoginPage: React.FC = () => {
 
   return (
     <AdminLogin
-      onLogin={() => navigate('/admin/dashboard')}
+      onLogin={() => navigate('/stx-ops-9x7k/dashboard')}
       onBack={() => navigate('/')}
     />
   );
