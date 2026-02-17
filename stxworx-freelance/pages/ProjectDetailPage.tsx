@@ -51,7 +51,12 @@ const ProjectDetailPage: React.FC = () => {
     setDeployingEscrow(true);
 
     try {
-      const { createProjectContractCall } = await import('../lib/contracts');
+      const { createProjectContractCall, getOnChainProjectCount } = await import('../lib/contracts');
+
+      // Read the current on-chain project counter BEFORE submitting
+      // so we can derive the new ID (counter + 1) after TX is sent
+      const currentCount = await getOnChainProjectCount();
+      const expectedOnChainId = currentCount + 1;
 
       const milestoneData = project.milestones.map((m) => ({ amount: m.amount }));
 
@@ -66,7 +71,7 @@ const ProjectDetailPage: React.FC = () => {
           console.log('Escrow transaction sent:', txData);
           await handleProjectAction(project.id, 'activate', {
             escrowTxId: txData.txId,
-            onChainId: 1,
+            onChainId: expectedOnChainId,
           });
           setDeployingEscrow(false);
           fetchMyProjects();

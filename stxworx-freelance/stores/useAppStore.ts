@@ -56,7 +56,7 @@ interface AppState {
   milestoneSubmissions: Record<number, BackendMilestoneSubmission[]>;
   projectDisputes: Record<number, BackendDispute[]>;
   profileReviews: Record<string, BackendReview[]>;
-  freelancerDashboardTab: 'applied' | 'active' | 'completed' | 'earnings' | 'nft';
+  freelancerDashboardTab: 'applied' | 'active' | 'work' | 'completed' | 'earnings' | 'nft';
   authUser: AuthUser | null;
   isAuthChecking: boolean;
 
@@ -107,7 +107,7 @@ interface AppState {
   /** @deprecated — use applyToProject (API-backed) instead */
   updateApplicationStatus: (applicationId: string, status: ApplicationStatus) => void;
   hasAppliedToProject: (projectId: string) => boolean;
-  setFreelancerDashboardTab: (tab: 'applied' | 'active' | 'completed' | 'earnings' | 'nft') => void;
+  setFreelancerDashboardTab: (tab: 'applied' | 'active' | 'work' | 'completed' | 'earnings' | 'nft') => void;
   handleCreateProject: (data: any) => Promise<void>;
   handleProjectAction: (projectId: string, actionType: string, payload?: any) => Promise<void>;
   handleConnectX: () => Promise<void>;

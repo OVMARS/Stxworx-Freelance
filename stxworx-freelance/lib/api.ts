@@ -22,7 +22,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-import type { Project, Milestone, FreelancerProfile } from '../types';
+import type { Project, Milestone, MilestoneStatus, FreelancerProfile } from '../types';
 
 /* ═══════════════════════════════════════════════════════
    BACKEND TYPES — mirrors shared/schema.ts row shapes
@@ -172,14 +172,18 @@ export interface LeaderboardEntry {
 /** Convert flat backend project row → frontend Project shape */
 export function mapBackendProject(bp: BackendProject): Project {
   const milestones: Milestone[] = [];
+  const isFunded = bp.status !== 'open' && bp.status !== 'cancelled';
   for (let i = 1; i <= bp.numMilestones; i++) {
     const title = (bp as any)[`milestone${i}Title`] as string | null;
     const amount = parseFloat((bp as any)[`milestone${i}Amount`] || '0');
+    // Milestones are 'locked' until escrow is funded, then become 'pending'
+    // (actual submitted/approved status is enriched later from submissions)
+    const baseStatus: MilestoneStatus = bp.status === 'refunded' ? 'refunded' : isFunded ? 'pending' : 'locked';
     milestones.push({
       id: i,
       title: title || `Milestone ${i}`,
       amount,
-      status: 'locked',
+      status: baseStatus,
     });
   }
   const totalBudget = milestones.reduce((sum, m) => sum + m.amount, 0);
@@ -195,7 +199,7 @@ export function mapBackendProject(bp: BackendProject): Project {
     freelancerId: bp.freelancerId ?? undefined,
     tokenType: bp.tokenType,
     totalBudget: bp.budget ? parseFloat(bp.budget) : totalBudget,
-    isFunded: bp.status !== 'open' && bp.status !== 'cancelled',
+    isFunded,
     createdAt: bp.createdAt,
     milestones,
     status: bp.status,
