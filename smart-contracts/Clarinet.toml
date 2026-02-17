@@ -8,12 +8,12 @@ requirements = []
 boot_contracts = []
 
 [contracts.escrow-contract-v1]
-path = "contracts/escrow-multi-token.clar"
+path = "contracts/escrow-contract-v1.clar"
 clarity_version = 4
 epoch = "latest"
 
 [contracts.stxworx-v1]
-path = "contracts/stxworx-badge.clar"
+path = "contracts/stxworx-v1.clar"
 clarity_version = 4
 epoch = "latest"
 

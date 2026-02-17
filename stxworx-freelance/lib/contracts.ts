@@ -11,7 +11,10 @@ import {
     fetchCallReadOnlyFunction,
     cvToValue,
 } from '@stacks/transactions';
-import { APP_CONFIG, CONTRACT_ADDRESS, CONTRACT_NAME, SBTC_CONTRACT_ADDRESS, SBTC_CONTRACT_NAME } from './constants';
+import {
+    stringAsciiCV,
+} from '@stacks/transactions';
+import { APP_CONFIG, CONTRACT_ADDRESS, CONTRACT_NAME, NFT_CONTRACT_NAME, SBTC_CONTRACT_ADDRESS, SBTC_CONTRACT_NAME } from './constants';
 
 interface ProjectData {
     freelancerAddress: string;
@@ -204,6 +207,121 @@ export const emergencyRefundContractCall = async (
         contractName: CONTRACT_NAME,
         functionName,
         functionArgs,
+        postConditionMode: PostConditionMode.Allow,
+        onFinish,
+        onCancel,
+        appDetails: { name: APP_CONFIG.name, icon: window.location.origin + APP_CONFIG.icon },
+    });
+};
+
+// ═══════════════════════════════════════════════════════════════
+// NFT CONTRACT CALLS (stxworx-v1)
+// ═══════════════════════════════════════════════════════════════
+
+/* ── Admin Mint Grade Badge ── */
+export const adminMintGradeContractCall = async (
+    recipient: string,
+    grade: number,
+    ipfsCid: string,
+    onFinish: (data: any) => void,
+    onCancel: () => void
+) => {
+    await openContractCall({
+        network: STACKS_TESTNET,
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: NFT_CONTRACT_NAME,
+        functionName: 'admin-mint-grade',
+        functionArgs: [
+            standardPrincipalCV(recipient),
+            uintCV(grade),
+            stringAsciiCV(ipfsCid),
+        ],
+        postConditionMode: PostConditionMode.Allow,
+        onFinish,
+        onCancel,
+        appDetails: { name: APP_CONFIG.name, icon: window.location.origin + APP_CONFIG.icon },
+    });
+};
+
+/* ── Admin Upgrade Grade Badge ── */
+export const adminUpgradeGradeContractCall = async (
+    user: string,
+    newGrade: number,
+    ipfsCid: string,
+    onFinish: (data: any) => void,
+    onCancel: () => void
+) => {
+    await openContractCall({
+        network: STACKS_TESTNET,
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: NFT_CONTRACT_NAME,
+        functionName: 'admin-upgrade-grade',
+        functionArgs: [
+            standardPrincipalCV(user),
+            uintCV(newGrade),
+            stringAsciiCV(ipfsCid),
+        ],
+        postConditionMode: PostConditionMode.Allow,
+        onFinish,
+        onCancel,
+        appDetails: { name: APP_CONFIG.name, icon: window.location.origin + APP_CONFIG.icon },
+    });
+};
+
+/* ── Admin Revoke Grade Badge ── */
+export const adminRevokeGradeContractCall = async (
+    user: string,
+    onFinish: (data: any) => void,
+    onCancel: () => void
+) => {
+    await openContractCall({
+        network: STACKS_TESTNET,
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: NFT_CONTRACT_NAME,
+        functionName: 'admin-revoke-grade',
+        functionArgs: [standardPrincipalCV(user)],
+        postConditionMode: PostConditionMode.Allow,
+        onFinish,
+        onCancel,
+        appDetails: { name: APP_CONFIG.name, icon: window.location.origin + APP_CONFIG.icon },
+    });
+};
+
+/* ── Mint Verified Badge ── */
+export const mintVerifiedContractCall = async (
+    recipient: string,
+    ipfsCid: string,
+    onFinish: (data: any) => void,
+    onCancel: () => void
+) => {
+    await openContractCall({
+        network: STACKS_TESTNET,
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: NFT_CONTRACT_NAME,
+        functionName: 'mint-verified',
+        functionArgs: [
+            standardPrincipalCV(recipient),
+            stringAsciiCV(ipfsCid),
+        ],
+        postConditionMode: PostConditionMode.Allow,
+        onFinish,
+        onCancel,
+        appDetails: { name: APP_CONFIG.name, icon: window.location.origin + APP_CONFIG.icon },
+    });
+};
+
+/* ── Revoke Verified Badge ── */
+export const revokeVerifiedContractCall = async (
+    user: string,
+    onFinish: (data: any) => void,
+    onCancel: () => void
+) => {
+    await openContractCall({
+        network: STACKS_TESTNET,
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: NFT_CONTRACT_NAME,
+        functionName: 'revoke-verified',
+        functionArgs: [standardPrincipalCV(user)],
         postConditionMode: PostConditionMode.Allow,
         onFinish,
         onCancel,
