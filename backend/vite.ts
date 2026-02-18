@@ -5,9 +5,14 @@ import { fileURLToPath } from "url";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 
-// Get __dirname equivalent in ES modules (Node 18 compatible)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Get __dirname — works in both ESM (import.meta.url) and CJS (__dirname global)
+const _currentDir = (() => {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return __dirname;
+  }
+})();
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -34,7 +39,7 @@ export async function setupVite(app: Express, server: Server) {
 
   const vite = await createViteServer({
     ...viteConfig,
-    root: path.resolve(__dirname, "..", "stxworx-freelance"),
+    root: path.resolve(_currentDir, "..", "stxworx-freelance"),
     configFile: false,
     customLogger: {
       ...viteLogger,
@@ -76,7 +81,7 @@ export async function setupVite(app: Express, server: Server) {
 
 export function serveStatic(app: Express) {
   // In production, __dirname is dist/server, so we need to go up one level to dist, then to public
-  const distPath = path.resolve(__dirname, "..", "public");
+  const distPath = path.resolve(_currentDir, "..", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
