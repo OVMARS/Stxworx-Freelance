@@ -6,6 +6,11 @@ import { eq, sql, and, count, avg } from "drizzle-orm";
 
 const updateProfileSchema = z.object({
   username: z.string().min(1).max(100).optional(),
+  specialty: z.string().max(100).optional(),
+  hourlyRate: z.string().optional(),
+  about: z.string().max(2000).optional(),
+  skills: z.array(z.string()).optional(),
+  portfolio: z.array(z.string().url()).optional(),
 });
 
 export const userController = {
@@ -20,6 +25,11 @@ export const userController = {
           username: users.username,
           role: users.role,
           isActive: users.isActive,
+          specialty: users.specialty,
+          hourlyRate: users.hourlyRate,
+          about: users.about,
+          skills: users.skills,
+          portfolio: users.portfolio,
           createdAt: users.createdAt,
         })
         .from(users)
@@ -48,9 +58,14 @@ export const userController = {
         return res.status(400).json({ message: "Validation error", errors: result.error.errors });
       }
 
+      const { hourlyRate, ...rest } = result.data;
       await db
         .update(users)
-        .set({ ...result.data, updatedAt: new Date() })
+        .set({
+          ...rest,
+          ...(hourlyRate !== undefined ? { hourlyRate } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(users.id, req.user.id));
       const [updated] = await db.select().from(users).where(eq(users.id, req.user.id));
 
@@ -64,6 +79,11 @@ export const userController = {
         username: updated.username,
         role: updated.role,
         isActive: updated.isActive,
+        specialty: updated.specialty,
+        hourlyRate: updated.hourlyRate,
+        about: updated.about,
+        skills: updated.skills,
+        portfolio: updated.portfolio,
       });
     } catch (error) {
       console.error("Update profile error:", error);

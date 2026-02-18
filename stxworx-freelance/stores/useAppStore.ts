@@ -751,15 +751,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   handleSaveProfile: async (updatedProfile) => {
     set({ isProcessing: true });
     try {
-      // Save username to backend
-      if (updatedProfile.name) {
-        await api.users.updateMe({ username: updatedProfile.name });
-      }
-      // Update local state with all profile data (rich fields are client-side for now)
+      const updated = await api.users.updateMe({
+        username: updatedProfile.name || undefined,
+        specialty: updatedProfile.specialty || undefined,
+        hourlyRate: updatedProfile.hourlyRate !== undefined ? String(updatedProfile.hourlyRate) : undefined,
+        about: updatedProfile.about || undefined,
+        skills: updatedProfile.skills || undefined,
+        portfolio: updatedProfile.portfolio || undefined,
+      });
+      const merged: FreelancerProfile = {
+        ...updatedProfile,
+        name: updated.username || updatedProfile.name,
+        specialty: updated.specialty || updatedProfile.specialty,
+        hourlyRate: updated.hourlyRate ? parseFloat(updated.hourlyRate) : updatedProfile.hourlyRate,
+        about: updated.about || updatedProfile.about,
+        skills: updated.skills || updatedProfile.skills,
+        portfolio: updated.portfolio || updatedProfile.portfolio,
+      };
       set((s) => ({
-        currentUserProfile: updatedProfile,
+        currentUserProfile: merged,
         leaderboardData: s.leaderboardData.map((p) =>
-          p.address === updatedProfile.address ? updatedProfile : p
+          p.address === updatedProfile.address ? merged : p
         ),
         isProcessing: false,
       }));

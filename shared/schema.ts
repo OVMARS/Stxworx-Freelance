@@ -59,6 +59,11 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", [...USER_ROLES]).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   totalEarned: decimal("total_earned", { precision: 18, scale: 8 }).default("0").notNull(),
+  specialty: varchar("specialty", { length: 100 }),
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
+  about: text("about"),
+  skills: json("skills").$type<string[]>(),
+  portfolio: json("portfolio").$type<string[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -35,6 +35,11 @@ export interface BackendUser {
   role: 'client' | 'freelancer';
   isActive?: boolean;
   totalEarned?: string;
+  specialty?: string | null;
+  hourlyRate?: string | null;
+  about?: string | null;
+  skills?: string[] | null;
+  portfolio?: string[] | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -239,10 +244,12 @@ export function mapBackendUserToProfile(u: BackendUser): FreelancerProfile {
     totalEarnings: parseFloat(u.totalEarned || '0'),
     jobsCompleted: 0,
     rating: 0,
-    specialty: 'Generalist',
+    specialty: u.specialty || 'Generalist',
     badges: [],
-    about: '',
-    portfolio: [],
+    about: u.about || '',
+    portfolio: u.portfolio || [],
+    skills: u.skills || [],
+    hourlyRate: u.hourlyRate ? parseFloat(u.hourlyRate) : undefined,
     isIdVerified: false,
     isSkillVerified: false,
     isPortfolioVerified: false,
@@ -284,7 +291,14 @@ export const api = {
     getByAddress: (address: string) =>
       request<BackendUser>(`/users/${address}`),
 
-    updateMe: (data: { username?: string }) =>
+    updateMe: (data: {
+      username?: string;
+      specialty?: string;
+      hourlyRate?: string;
+      about?: string;
+      skills?: string[];
+      portfolio?: string[];
+    }) =>
       request<BackendUser>('/users/me', {
         method: 'PATCH',
         body: JSON.stringify(data),
