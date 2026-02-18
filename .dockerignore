@@ -1,0 +1,52 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Dependencies (reinstalled in Docker build)
+node_modules
+
+# Environment files (injected via env_file / secrets)
+.env
+.env.*
+!.env.production.example
+
+# Build outputs (rebuilt in Docker)
+dist
+
+# Documentation & admin (not needed in production)
+ADMIN/
+*.md
+
+# Smart contracts (not needed in production)
+smart-contracts/
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude config
+.claude/
+
+# Test / dev files
+coverage/
+*.test.ts
+vitest.config.*
+
+# Misc dev tooling
+.replit
+replit.nix
+.npmrc
+components.json
+
+# Deployment configs (not needed inside container)
+deploy.sh
+ecosystem.config.cjs
+
+# Badge metadata (not served by backend)
+badge-metadata/
+
+# Logs
+logs/
