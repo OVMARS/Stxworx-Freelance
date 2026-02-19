@@ -19,9 +19,7 @@ import {
 
 import { WalletState, ViewType, UserRole } from '../types';
 import { useAppStore } from '../stores/useAppStore';
-
-// Adjust this import path according to your actual folder structure
-import STXWORXLogo from '../assets/STXWORX_LOGO_FINAL_3d_cropped.png';  // ← CHANGE PATH IF NEEDED
+import STXWORXLogo from '../assets/STXWORX_LOGO_FINAL_3d_cropped.png'; 
 
 interface NavbarProps {
   wallet: WalletState;
